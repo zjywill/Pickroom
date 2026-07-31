@@ -14,6 +14,7 @@ struct PickroomApp: App {
                 }
         }
         .defaultSize(width: 1_440, height: 900)
+        .windowToolbarStyle(.unified(showsTitle: false))
         .commands {
             PickroomCommands(model: model)
         }
