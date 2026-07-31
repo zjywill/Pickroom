@@ -4,7 +4,9 @@ struct SidebarView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        List {
+        @Bindable var model = model
+
+        List(selection: $model.filter) {
             Section {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
@@ -22,31 +24,27 @@ struct SidebarView: View {
                     Image(systemName: "folder.fill")
                         .foregroundStyle(.tint)
                 }
-                .padding(.leading, 8)
 
                 Button {
                     model.openFolder()
                 } label: {
                     Label("Choose Folder", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
-                        .padding(.leading, 8)
                 }
                 .help(model.sourceFolder?.path ?? "Choose Folder")
             } header: {
-                SidebarSectionTitle("Source")
+                Text("Source")
             }
 
             Section {
                 ForEach(LibraryFilter.allCases) { filter in
                     FilterRow(
                         filter: filter,
-                        count: model.count(for: filter),
-                        isSelected: model.filter == filter
-                    ) {
-                        model.filter = filter
-                    }
+                        count: model.count(for: filter)
+                    )
+                    .tag(filter)
                 }
             } header: {
-                SidebarSectionTitle("Library")
+                Text("Library")
             }
 
             if !model.assets.isEmpty {
@@ -56,15 +54,13 @@ struct SidebarView: View {
                         total: Double(model.assets.count)
                     )
                     .tint(Color(red: 0.20, green: 0.78, blue: 0.58))
-                    .padding(.leading, 8)
 
                     Text("\(model.assets.count - model.count(for: .unreviewed)) of \(model.assets.count) reviewed")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
-                        .padding(.leading, 8)
                 } header: {
-                    SidebarSectionTitle("Progress")
+                    Text("Progress")
                 }
             }
 
@@ -88,7 +84,6 @@ struct SidebarView: View {
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 8)
                 }
                 .disabled(model.rejectedAssetCount == 0 || model.isManagingRejects)
                 .help("Move rejected RAW and paired files to Trash after confirmation")
@@ -99,51 +94,26 @@ struct SidebarView: View {
     }
 }
 
-private struct SidebarSectionTitle: View {
-    let title: String
-
-    init(_ title: String) {
-        self.title = title
-    }
-
-    var body: some View {
-        Text(title)
-            .padding(.leading, 8)
-    }
-}
-
 private struct FilterRow: View {
     let filter: LibraryFilter
     let count: Int
-    let isSelected: Bool
-    let action: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 9) {
-                Image(systemName: filter.symbol)
-                    .frame(width: 18)
-                    .foregroundStyle(symbolColor)
+        HStack(spacing: 9) {
+            Image(systemName: filter.symbol)
+                .frame(width: 18)
+                .foregroundStyle(symbolColor)
 
-                Text(filter.title)
+            Text(filter.title)
 
-                Spacer(minLength: 8)
+            Spacer(minLength: 8)
 
-                Text(count, format: .number)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            .padding(.leading, 8)
-            .contentShape(Rectangle())
+            Text(count, format: .number)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .monospacedDigit()
         }
-        .buttonStyle(.plain)
-        .listRowBackground(
-            isSelected
-                ? Color.accentColor.opacity(0.16)
-                : Color.clear
-        )
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .contentShape(Rectangle())
     }
 
     private var symbolColor: Color {

@@ -8,13 +8,13 @@ struct PickroomApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
-                .frame(minWidth: 1_080, minHeight: 700)
+                .frame(minWidth: 1_120, minHeight: 700)
                 .task {
                     await model.restoreLastFolderIfAvailable()
                 }
         }
         .defaultSize(width: 1_440, height: 900)
-        .windowToolbarStyle(.unified(showsTitle: false))
+        .windowResizability(.contentMinSize)
         .commands {
             PickroomCommands(model: model)
         }

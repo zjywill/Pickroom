@@ -43,6 +43,7 @@ struct PhotoCanvas: View {
                             .resizable()
                             .interpolation(.high)
                             .frame(width: imageRect.width, height: imageRect.height)
+                            .pickroomBackgroundExtension()
 
                         if model.compositionGridEnabled {
                             CompositionGrid()
@@ -376,6 +377,17 @@ struct PhotoCanvas: View {
             width: min(max(offset.width, -maxX), maxX),
             height: min(max(offset.height, -maxY), maxY)
         )
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func pickroomBackgroundExtension() -> some View {
+        if #available(macOS 26.0, *) {
+            backgroundExtensionEffect()
+        } else {
+            self
+        }
     }
 }
 
