@@ -4,6 +4,35 @@ Pickroom is a keyboard-first RAW culling workspace for macOS 14 and later. It ke
 photograph large, makes focus inspection immediate, and keeps capture settings
 visible while you decide.
 
+## Install
+
+### Homebrew
+
+The source repository is private, so installing from the tap requires GitHub
+SSH access to `zjywill/Pickroom`.
+
+```bash
+brew install zjywill/tap/pickroom
+rm -rf /Applications/Pickroom.app
+cp -R "$(brew --prefix pickroom)/Pickroom.app" /Applications/Pickroom.app
+```
+
+Quit Pickroom and repeat the copy after each upgrade.
+
+### GitHub Release
+
+Download the latest DMG from
+[GitHub Releases](https://github.com/zjywill/Pickroom/releases), open it, and
+drag Pickroom to Applications.
+
+Pickroom is currently ad-hoc signed rather than Developer ID signed and
+notarized. macOS may block the first launch after downloading the DMG. Use
+**System Settings -> Privacy & Security -> Open Anyway**, or run:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/Pickroom.app
+```
+
 ## Current prototype
 
 - Open or drag in a folder containing RAW, HEIC, TIFF, JPEG, PNG, or SVG files.
@@ -24,6 +53,20 @@ visible while you decide.
 ```bash
 xcodegen generate
 xcodebuild -project Pickroom.xcodeproj -scheme Pickroom -configuration Debug build
+```
+
+Create a universal, ad-hoc signed app and DMG without a paid Apple Developer
+account:
+
+```bash
+VERSION=0.1.0 scripts/bundle.sh
+```
+
+Import a rendered icon, remove its white background, and regenerate every
+macOS AppIcon size:
+
+```bash
+Tools/import-app-icon.py /path/to/source.png
 ```
 
 Pickroom uses a dual decoding pipeline:
