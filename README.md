@@ -62,11 +62,10 @@ account:
 VERSION=0.1.0 scripts/bundle.sh
 ```
 
-Import a rendered icon, remove its white background, and regenerate every
-macOS AppIcon size:
+Render the checked-in SVG artwork into every macOS AppIcon size:
 
 ```bash
-Tools/import-app-icon.py /path/to/source.png
+Tools/render-app-icon.py
 ```
 
 Pickroom uses a dual decoding pipeline:

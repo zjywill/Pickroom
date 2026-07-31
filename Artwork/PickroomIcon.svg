@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="background" x1="184" y1="150" x2="850" y2="884" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18C4A8"/>
+      <stop offset="0.56" stop-color="#247FE8"/>
+      <stop offset="1" stop-color="#6757E8"/>
+    </linearGradient>
+    <linearGradient id="card" x1="286" y1="284" x2="702" y2="724" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EEF5FF"/>
+    </linearGradient>
+    <linearGradient id="mountain" x1="294" y1="462" x2="690" y2="678" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#16B5A8"/>
+      <stop offset="1" stop-color="#3F62D9"/>
+    </linearGradient>
+    <filter id="lift" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="16" stdDeviation="18" flood-color="#18214B" flood-opacity="0.18"/>
+    </filter>
+    <clipPath id="frontCard">
+      <rect x="248" y="284" width="470" height="438" rx="88"/>
+    </clipPath>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="190" fill="url(#background)"/>
+
+  <g filter="url(#lift)">
+    <rect x="390" y="222" width="350" height="440" rx="76" fill="#FFC857" transform="rotate(8 565 442)"/>
+    <rect x="326" y="246" width="402" height="448" rx="80" fill="#F064A0" transform="rotate(3 527 470)"/>
+
+    <rect x="248" y="284" width="470" height="438" rx="88" fill="url(#card)" stroke="#FFFFFF" stroke-width="8"/>
+    <g clip-path="url(#frontCard)">
+      <circle cx="365" cy="398" r="48" fill="#FFC857"/>
+      <path d="M226 684L394 484C411 464 441 464 458 484L535 575L597 504C615 483 647 485 662 509L746 640V748H226Z" fill="url(#mountain)"/>
+    </g>
+
+    <circle cx="708" cy="700" r="104" fill="#17233E" stroke="#F7FAFF" stroke-width="10"/>
+    <path d="M654 700L691 737L764 654" fill="none" stroke="#FFFFFF" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
