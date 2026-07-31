@@ -25,6 +25,7 @@
 		848FC19F09A21E5224F6A02B /* FilmstripView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D797299756DC32BAC7021E16 /* FilmstripView.swift */; };
 		8EC2FB84546EECBC0BBF3210 /* PickroomColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32D5AFBDEA7ACBF7A8394AB2 /* PickroomColors.swift */; };
 		963B5FEE0586F0F6AB7C0997 /* PhotoMetadataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F8A2F8B975DAF24C3F5C68B /* PhotoMetadataTests.swift */; };
+		A1C0DE0000000000000000B2 /* CullingShortcutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000B1 /* CullingShortcutTests.swift */; };
 		98B6F38CDAAC043FD507631F /* SVGSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD134522897043D4B20D0E /* SVGSupport.swift */; };
 		A8B07C78562B7658EA25A39F /* RejectedPhotoManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBBC7BE440CB53F8EBB8198B /* RejectedPhotoManager.swift */; };
 		AD68F6F110B4632DA8B45471 /* PhotoLibraryScannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D21F24F56C2F35D66BE9F30 /* PhotoLibraryScannerTests.swift */; };
@@ -36,6 +37,7 @@
 		ED29436789412C1601B08233 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76B6F1F587D15DE36A82C578 /* SidebarView.swift */; };
 		EFEF28F112A2DB5F9A2A4F0C /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0B0CD9F075AA79F9F9A240 /* InspectorView.swift */; };
 		FB56D38DFBFD20EFE907B84D /* PickroomCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72617B006365D2AFF1E961A9 /* PickroomCommands.swift */; };
+		A1C0DE0000000000000000A2 /* CullingShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000A1 /* CullingShortcuts.swift */; };
 		FC2B4539E31EB37AC5D9A851 /* PreviewPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A14C890D518D4EDC6CF1959 /* PreviewPipeline.swift */; };
 /* End PBXBuildFile section */
 
@@ -66,9 +68,11 @@
 		62E06E18078E2DAB2CFEA789 /* PhotoGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGridView.swift; sourceTree = "<group>"; };
 		6A14C890D518D4EDC6CF1959 /* PreviewPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPipeline.swift; sourceTree = "<group>"; };
 		72617B006365D2AFF1E961A9 /* PickroomCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PickroomCommands.swift; sourceTree = "<group>"; };
+		A1C0DE0000000000000000A1 /* CullingShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CullingShortcuts.swift; sourceTree = "<group>"; };
 		76B6F1F587D15DE36A82C578 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		895433C4407F9690063D4606 /* PhotoCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoCanvas.swift; sourceTree = "<group>"; };
 		8F8A2F8B975DAF24C3F5C68B /* PhotoMetadataTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMetadataTests.swift; sourceTree = "<group>"; };
+		A1C0DE0000000000000000B1 /* CullingShortcutTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CullingShortcutTests.swift; sourceTree = "<group>"; };
 		91981DEC22C8D4FC92869FE0 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		9F83980AE8E25989D79EDFC1 /* MetadataReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataReader.swift; sourceTree = "<group>"; };
 		A19487810C764FAE326A45F6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -108,6 +112,7 @@
 			children = (
 				0D21F24F56C2F35D66BE9F30 /* PhotoLibraryScannerTests.swift */,
 				8F8A2F8B975DAF24C3F5C68B /* PhotoMetadataTests.swift */,
+				A1C0DE0000000000000000B1 /* CullingShortcutTests.swift */,
 				60245D6220EAB3366F23F28E /* RawEngineIntegrationTests.swift */,
 				2D707B13BBAF7D4260CC3E68 /* RejectedPhotoManagerTests.swift */,
 			);
@@ -195,6 +200,7 @@
 			children = (
 				255499001AE7023D63036DA1 /* PickroomApp.swift */,
 				72617B006365D2AFF1E961A9 /* PickroomCommands.swift */,
+				A1C0DE0000000000000000A1 /* CullingShortcuts.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -313,6 +319,7 @@
 			files = (
 				AD68F6F110B4632DA8B45471 /* PhotoLibraryScannerTests.swift in Sources */,
 				963B5FEE0586F0F6AB7C0997 /* PhotoMetadataTests.swift in Sources */,
+				A1C0DE0000000000000000B2 /* CullingShortcutTests.swift in Sources */,
 				153E70539709C1A0B3166947 /* RawEngineIntegrationTests.swift in Sources */,
 				7519E8A46A3ADAF86E34A006 /* RejectedPhotoManagerTests.swift in Sources */,
 			);
@@ -338,6 +345,7 @@
 				B4C21DAE9275CBA8CBECBCDD /* PickroomApp.swift in Sources */,
 				8EC2FB84546EECBC0BBF3210 /* PickroomColors.swift in Sources */,
 				FB56D38DFBFD20EFE907B84D /* PickroomCommands.swift in Sources */,
+				A1C0DE0000000000000000A2 /* CullingShortcuts.swift in Sources */,
 				FC2B4539E31EB37AC5D9A851 /* PreviewPipeline.swift in Sources */,
 				A8B07C78562B7658EA25A39F /* RejectedPhotoManager.swift in Sources */,
 				7924443CD1B120AC189DA573 /* RootView.swift in Sources */,

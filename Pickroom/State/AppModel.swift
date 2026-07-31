@@ -330,6 +330,18 @@ final class AppModel {
         setZoom(1 / max(fitPixelScale, 0.001))
     }
 
+    /// Switches between the fitted view and 100% pixels, matching the
+    /// double-click gesture on the canvas.
+    func toggleActualSize() {
+        guard !isLoading, currentAsset != nil else { return }
+
+        if zoomScale > 1.001 {
+            resetZoom()
+        } else {
+            zoomToActualSize()
+        }
+    }
+
     func neighboringAssets(limit: Int = 1) -> [PhotoAsset] {
         guard let currentVisibleIndex else { return [] }
 

@@ -109,6 +109,12 @@ struct PickroomCommands: Commands {
             }
             .keyboardShortcut("z", modifiers: [])
             .disabled(model.currentAsset == nil || model.isLoading)
+
+            Button("Toggle Actual Size") {
+                model.toggleActualSize()
+            }
+            .keyboardShortcut(.space, modifiers: [])
+            .disabled(model.currentAsset == nil || model.isLoading)
         }
     }
 }

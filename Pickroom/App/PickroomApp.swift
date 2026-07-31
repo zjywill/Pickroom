@@ -8,6 +8,7 @@ struct PickroomApp: App {
         WindowGroup {
             RootView()
                 .environment(model)
+                .cullingKeyShortcuts(model: model)
                 .frame(minWidth: 1_120, minHeight: 700)
                 .task {
                     await model.restoreLastFolderIfAvailable()

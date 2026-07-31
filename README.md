@@ -43,6 +43,7 @@ xattr -dr com.apple.quarantine /Applications/Pickroom.app
 - Pinch on a trackpad to zoom, then drag to inspect focus across the frame.
 - Mouse users can zoom from the toolbar or double-click between fit and 200%.
 - Use `Command--`, `Command-0`, and `Command-+` for zoom control.
+- Press `Space` to switch between fit to window and 100% pixels.
 - Inspect composition with the thirds grid (`C`).
 - Switch between culling and contact sheet views with `Command-1` and `Command-2`.
 - Move current rejects and paired files to macOS Trash after one explicit confirmation.
