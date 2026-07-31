@@ -76,6 +76,11 @@ package plugins, and compiler macro subprocesses. `scripts/bundle.sh` uses this
 opt-in only for the Homebrew path to avoid unsupported nested `sandbox-exec`
 calls; normal local and release builds keep Xcode's default sandboxing.
 
+Homebrew relocates Mach-O install names after `install`, which invalidates the
+framework bundle seal and the outer app signature. The formula's `post_install`
+must therefore ad-hoc sign `LibRaw.framework` first and `Pickroom.app` second.
+Do not remove that step while the formula installs an app bundle.
+
 After installation, put a real app copy in Applications:
 
 ```bash
@@ -101,11 +106,11 @@ The Release must contain non-empty `Pickroom-X.Y.Z.dmg` and
 `Pickroom-X.Y.Z.dmg.sha256` assets. The formula must name the same tag and the
 tagged commit revision.
 
-Then verify the user path:
+The release script must keep the local tap checkout clean, fast-forward it to
+the newly published tap commit, and verify the standard user path:
 
 ```bash
-brew update
-brew install --build-from-source zjywill/tap/pickroom
+brew reinstall --build-from-source zjywill/tap/pickroom
 brew test zjywill/tap/pickroom
 ```
 

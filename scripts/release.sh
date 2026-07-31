@@ -12,6 +12,8 @@ set -euo pipefail
 
 SOURCE_REPO="zjywill/Pickroom"
 TAP_REPO="zjywill/homebrew-tap"
+TAP_NAME="zjywill/tap"
+FORMULA_NAME="pickroom"
 FORMULA="Formula/pickroom.rb"
 FORMULA_TEMPLATE="Packaging/homebrew/pickroom.rb"
 
@@ -50,6 +52,17 @@ git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1 &&
     die "$TAG already exists on origin"
 gh release view "$TAG" --repo "$SOURCE_REPO" >/dev/null 2>&1 &&
     die "GitHub Release $TAG already exists"
+
+if ! brew tap | grep -Fxq "$TAP_NAME"; then
+    brew tap "$TAP_NAME"
+fi
+LOCAL_TAP="$(brew --repo "$TAP_NAME")"
+[ -d "$LOCAL_TAP/.git" ] || die "Homebrew tap checkout is missing: $LOCAL_TAP"
+[ -z "$(git -C "$LOCAL_TAP" status --porcelain)" ] ||
+    die "Homebrew tap checkout is dirty: $LOCAL_TAP"
+git -C "$LOCAL_TAP" fetch -q origin
+git -C "$LOCAL_TAP" merge --ff-only -q origin/main ||
+    die "Homebrew tap checkout cannot fast-forward to origin/main"
 
 # Clone before creating any tag so tap authentication cannot produce a
 # release that is known in advance to be only half publishable.
@@ -177,6 +190,31 @@ echo "$REMOTE_FORMULA" | grep -Eq "tag:[[:space:]]+\"$TAG\"" ||
     die "remote formula does not name $TAG"
 echo "$REMOTE_FORMULA" | grep -Eq "revision:[[:space:]]+\"$REVISION\"" ||
     die "remote formula does not pin $REVISION"
+
+echo "==> Verifying Homebrew install"
+git -C "$LOCAL_TAP" fetch -q origin
+git -C "$LOCAL_TAP" merge --ff-only -q origin/main ||
+    die "Homebrew tap checkout cannot fast-forward to the published formula"
+[ "$(git -C "$LOCAL_TAP" rev-parse HEAD)" = "$(git -C "$LOCAL_TAP" rev-parse origin/main)" ] ||
+    die "Homebrew tap checkout and origin/main differ after synchronization"
+
+FORMULA_REF="$TAP_NAME/$FORMULA_NAME"
+if brew list --versions "$FORMULA_NAME" >/dev/null 2>&1; then
+    HOMEBREW_NO_AUTO_UPDATE=1 brew reinstall --build-from-source "$FORMULA_REF"
+else
+    HOMEBREW_NO_AUTO_UPDATE=1 brew install --build-from-source "$FORMULA_REF"
+fi
+brew test "$FORMULA_REF"
+
+INSTALLED_APP="$(brew --prefix "$FORMULA_NAME")/Pickroom.app"
+INSTALLED_VERSION="$(
+    /usr/libexec/PlistBuddy \
+        -c 'Print :CFBundleShortVersionString' \
+        "$INSTALLED_APP/Contents/Info.plist"
+)"
+[ "$INSTALLED_VERSION" = "$VERSION" ] ||
+    die "Homebrew installed version $INSTALLED_VERSION instead of $VERSION"
+/usr/bin/codesign --verify --deep --strict "$INSTALLED_APP"
 
 cat <<EOF
 

@@ -29,6 +29,15 @@ class Pickroom < Formula
     SH
   end
 
+  def post_install
+    app = prefix/"Pickroom.app"
+    framework = app/"Contents/Frameworks/LibRaw.framework"
+    system "/usr/bin/codesign", "--force", "--sign", "-", "--timestamp=none",
+           "--generate-entitlement-der", framework
+    system "/usr/bin/codesign", "--force", "--sign", "-", "--timestamp=none",
+           "--generate-entitlement-der", app
+  end
+
   def caveats
     <<~EOS
       Pickroom.app was installed to:
