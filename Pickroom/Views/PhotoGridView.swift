@@ -128,7 +128,11 @@ private struct PhotoGridTile: View {
             }
         }
         .task(id: asset.url) {
-            preview = await PreviewPipeline.shared.image(for: asset.url, maxPixelSize: 720)
+            preview = await PreviewPipeline.shared.image(
+                for: asset.url,
+                maxPixelSize: 720,
+                priority: .background
+            )
         }
         .accessibilityLabel(asset.filename)
         .accessibilityValue("\(asset.decision.title), \(asset.rating) stars")

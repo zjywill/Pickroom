@@ -9,6 +9,7 @@ struct PickroomCommands: Commands {
                 model.openFolder()
             }
             .keyboardShortcut("o", modifiers: .command)
+            .disabled(model.isLoading)
         }
 
         CommandMenu("Photo") {
@@ -16,13 +17,13 @@ struct PickroomCommands: Commands {
                 model.selectPrevious()
             }
             .keyboardShortcut(.leftArrow, modifiers: [])
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
 
             Button("Next Photo") {
                 model.selectNext()
             }
             .keyboardShortcut(.rightArrow, modifiers: [])
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
 
             Divider()
 
@@ -30,25 +31,25 @@ struct PickroomCommands: Commands {
                 model.setDecision(.pick)
             }
             .keyboardShortcut("p", modifiers: [])
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
 
             Button("Maybe") {
                 model.setDecision(.maybe)
             }
             .keyboardShortcut("m", modifiers: [])
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
 
             Button("Reject") {
                 model.setDecision(.reject)
             }
             .keyboardShortcut("x", modifiers: [])
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
 
             Button("Unmark") {
                 model.setDecision(.unreviewed, advance: false)
             }
             .keyboardShortcut("u", modifiers: [])
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
 
             Divider()
 
@@ -57,7 +58,7 @@ struct PickroomCommands: Commands {
                     model.setRating(rating)
                 }
                 .keyboardShortcut(KeyEquivalent(Character(String(rating))), modifiers: [])
-                .disabled(model.currentAsset == nil)
+                .disabled(model.currentAsset == nil || model.isLoading)
             }
         }
 
@@ -66,11 +67,13 @@ struct PickroomCommands: Commands {
                 model.workspaceMode = .cull
             }
             .keyboardShortcut("1", modifiers: .command)
+            .disabled(model.isLoading)
 
             Button("Contact Sheet") {
                 model.workspaceMode = .grid
             }
             .keyboardShortcut("2", modifiers: .command)
+            .disabled(model.isLoading)
 
             Divider()
 
@@ -79,6 +82,7 @@ struct PickroomCommands: Commands {
                 set: { model.compositionGridEnabled = $0 }
             ))
             .keyboardShortcut("c", modifiers: [])
+            .disabled(model.isLoading)
 
             Divider()
 
@@ -86,19 +90,25 @@ struct PickroomCommands: Commands {
                 model.zoomIn()
             }
             .keyboardShortcut("+", modifiers: .command)
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
 
             Button("Zoom Out") {
                 model.zoomOut()
             }
             .keyboardShortcut("-", modifiers: .command)
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
 
             Button("Fit to Window") {
                 model.resetZoom()
             }
             .keyboardShortcut("0", modifiers: .command)
-            .disabled(model.currentAsset == nil)
+            .disabled(model.currentAsset == nil || model.isLoading)
+
+            Button("Actual Size") {
+                model.zoomToActualSize()
+            }
+            .keyboardShortcut("z", modifiers: [])
+            .disabled(model.currentAsset == nil || model.isLoading)
         }
     }
 }

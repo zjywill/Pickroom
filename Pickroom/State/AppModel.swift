@@ -6,13 +6,7 @@ import SwiftUI
 @Observable
 final class AppModel {
     var assets: [PhotoAsset] = []
-    var currentAssetID: UUID? {
-        didSet {
-            if currentAssetID != oldValue {
-                zoomScale = 1
-            }
-        }
-    }
+    var currentAssetID: UUID?
     var sourceFolder: URL?
     var filter: LibraryFilter = .all {
         didSet {
@@ -22,6 +16,7 @@ final class AppModel {
     var workspaceMode: WorkspaceMode = .cull
     var compositionGridEnabled = false
     var zoomScale: CGFloat = 1
+    private(set) var fitPixelScale: CGFloat = 1
     var isLoading = false
     var loadError: String?
 
@@ -47,11 +42,28 @@ final class AppModel {
         sourceFolder?.lastPathComponent ?? "No folder"
     }
 
+    var actualPixelScale: CGFloat {
+        fitPixelScale * zoomScale
+    }
+
+    var maximumZoomScale: CGFloat {
+        min(max(8, 2 / max(fitPixelScale, 0.001)), 32)
+    }
+
+    var zoomDisplayLabel: String {
+        ZoomMath.displayLabel(
+            zoomScale: zoomScale,
+            actualPixelScale: actualPixelScale
+        )
+    }
+
     func count(for filter: LibraryFilter) -> Int {
         assets.filter(filter.matches).count
     }
 
     func openFolder() {
+        guard !isLoading else { return }
+
         let panel = NSOpenPanel()
         panel.title = "Choose a photo folder"
         panel.message = "Pickroom reads the folder in place and does not modify source files."
@@ -67,6 +79,7 @@ final class AppModel {
     }
 
     func loadDroppedURLs(_ urls: [URL]) {
+        guard !isLoading else { return }
         guard let folder = urls.first.map(folderURL(for:)) else { return }
         Task {
             await loadFolder(folder)
@@ -74,6 +87,7 @@ final class AppModel {
     }
 
     func loadFolder(_ folder: URL) async {
+        guard !isLoading else { return }
         isLoading = true
         loadError = nil
 
@@ -89,6 +103,8 @@ final class AppModel {
         sourceFolder = folder
         assets = scanned
         filter = .all
+        resetZoom()
+        fitPixelScale = 1
         currentAssetID = scanned.first?.id
         workspaceMode = .cull
         isLoading = false
@@ -112,19 +128,23 @@ final class AppModel {
     }
 
     func select(_ asset: PhotoAsset) {
+        guard !isLoading else { return }
         currentAssetID = asset.id
     }
 
     func selectNext() {
+        guard !isLoading else { return }
         moveSelection(by: 1)
     }
 
     func selectPrevious() {
+        guard !isLoading else { return }
         moveSelection(by: -1)
     }
 
     func setDecision(_ decision: PhotoDecision, advance: Bool = true) {
         guard
+            !isLoading,
             let currentAssetID,
             let assetIndex = assets.firstIndex(where: { $0.id == currentAssetID })
         else {
@@ -146,6 +166,7 @@ final class AppModel {
 
     func setRating(_ rating: Int) {
         guard
+            !isLoading,
             let currentAssetID,
             let index = assets.firstIndex(where: { $0.id == currentAssetID })
         else {
@@ -157,11 +178,27 @@ final class AppModel {
     }
 
     func toggleCompositionGrid() {
+        guard !isLoading else { return }
         compositionGridEnabled.toggle()
     }
 
     func setZoom(_ value: CGFloat) {
-        zoomScale = min(max(value, 1), 8)
+        zoomScale = min(max(value, 1), maximumZoomScale)
+    }
+
+    func updateFitPixelScale(_ value: CGFloat) {
+        let newValue = max(value, 0.001)
+        guard abs(newValue - fitPixelScale) > 0.0001 else { return }
+
+        let preservedActualScale = actualPixelScale
+        let wasFit = zoomScale <= 1.001
+        fitPixelScale = newValue
+
+        if wasFit {
+            zoomScale = 1
+        } else {
+            setZoom(preservedActualScale / newValue)
+        }
     }
 
     func zoomIn() {
@@ -174,6 +211,20 @@ final class AppModel {
 
     func resetZoom() {
         zoomScale = 1
+    }
+
+    func zoomToActualSize() {
+        setZoom(1 / max(fitPixelScale, 0.001))
+    }
+
+    func neighboringAssets(limit: Int = 1) -> [PhotoAsset] {
+        guard let currentVisibleIndex else { return [] }
+
+        let lowerBound = max(currentVisibleIndex - limit, 0)
+        let upperBound = min(currentVisibleIndex + limit, filteredAssets.count - 1)
+        guard lowerBound <= upperBound else { return [] }
+
+        return filteredAssets[lowerBound...upperBound].filter { $0.id != currentAssetID }
     }
 
     private func moveSelection(by offset: Int) {
@@ -235,5 +286,42 @@ final class AppModel {
             return url
         }
         return url.deletingLastPathComponent()
+    }
+}
+
+enum ZoomMath {
+    static func fitPixelScale(
+        imageRect: CGRect,
+        sourcePixelSize: CGSize,
+        displayScale: CGFloat
+    ) -> CGFloat {
+        let sourceLongEdge = max(sourcePixelSize.width, sourcePixelSize.height)
+        let displayedLongEdge = max(imageRect.width, imageRect.height) * displayScale
+        guard sourceLongEdge > 0, displayedLongEdge > 0 else { return 1 }
+        return displayedLongEdge / sourceLongEdge
+    }
+
+    static func anchoredOffset(
+        currentOffset: CGSize,
+        imageCenter: CGPoint,
+        anchor: CGPoint,
+        scaleRatio: CGFloat
+    ) -> CGSize {
+        CGSize(
+            width: anchor.x - imageCenter.x
+                - (anchor.x - imageCenter.x - currentOffset.width) * scaleRatio,
+            height: anchor.y - imageCenter.y
+                - (anchor.y - imageCenter.y - currentOffset.height) * scaleRatio
+        )
+    }
+
+    static func displayLabel(zoomScale: CGFloat, actualPixelScale: CGFloat) -> String {
+        if zoomScale <= 1.001 {
+            return "Fit"
+        }
+        if abs(actualPixelScale - 1) <= 0.015 {
+            return "1:1"
+        }
+        return "\(Int((actualPixelScale * 100).rounded()))%"
     }
 }

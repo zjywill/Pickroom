@@ -25,9 +25,7 @@ struct FilmstripView: View {
             .background(Color(nsColor: .controlBackgroundColor))
             .onChange(of: model.currentAssetID) { _, newID in
                 guard let newID else { return }
-                withAnimation(.easeOut(duration: 0.14)) {
-                    proxy.scrollTo(newID, anchor: .center)
-                }
+                proxy.scrollTo(newID, anchor: .center)
             }
         }
     }
@@ -80,7 +78,11 @@ private struct FilmstripThumbnail: View {
         .accessibilityLabel(asset.filename)
         .accessibilityValue("\(asset.decision.title), \(asset.rating) stars")
         .task(id: asset.url) {
-            preview = await PreviewPipeline.shared.image(for: asset.url, maxPixelSize: 260)
+            preview = await PreviewPipeline.shared.image(
+                for: asset.url,
+                maxPixelSize: 260,
+                priority: .background
+            )
         }
     }
 }

@@ -5,7 +5,7 @@ struct SidebarView: View {
 
     var body: some View {
         List {
-            Section("Source") {
+            Section {
                 Label {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(model.sourceName)
@@ -22,15 +22,20 @@ struct SidebarView: View {
                     Image(systemName: "folder.fill")
                         .foregroundStyle(.tint)
                 }
+                .padding(.leading, 8)
 
                 Button {
                     model.openFolder()
                 } label: {
-                    Label("Choose Another Folder", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+                    Label("Choose Folder", systemImage: "arrow.trianglehead.2.clockwise.rotate.90")
+                        .padding(.leading, 8)
                 }
+                .help(model.sourceFolder?.path ?? "Choose Folder")
+            } header: {
+                SidebarSectionTitle("Source")
             }
 
-            Section("Library") {
+            Section {
                 ForEach(LibraryFilter.allCases) { filter in
                     FilterRow(
                         filter: filter,
@@ -40,25 +45,44 @@ struct SidebarView: View {
                         model.filter = filter
                     }
                 }
+            } header: {
+                SidebarSectionTitle("Library")
             }
 
             if !model.assets.isEmpty {
-                Section("Progress") {
+                Section {
                     ProgressView(
                         value: Double(model.assets.count - model.count(for: .unreviewed)),
                         total: Double(model.assets.count)
                     )
                     .tint(Color(red: 0.20, green: 0.78, blue: 0.58))
+                    .padding(.leading, 8)
 
                     Text("\(model.assets.count - model.count(for: .unreviewed)) of \(model.assets.count) reviewed")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
+                        .padding(.leading, 8)
+                } header: {
+                    SidebarSectionTitle("Progress")
                 }
             }
         }
         .listStyle(.sidebar)
         .navigationTitle("Pickroom")
+    }
+}
+
+private struct SidebarSectionTitle: View {
+    let title: String
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .padding(.leading, 8)
     }
 }
 
@@ -84,6 +108,7 @@ private struct FilterRow: View {
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
             }
+            .padding(.leading, 8)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

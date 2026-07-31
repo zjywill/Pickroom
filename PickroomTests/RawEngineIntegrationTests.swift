@@ -74,6 +74,11 @@ final class RawEngineIntegrationTests: XCTestCase {
             let renderedImage = try XCTUnwrap(preview.cgImage())
             XCTAssertGreaterThan(renderedImage.width, 0)
             XCTAssertGreaterThan(renderedImage.height, 0)
+
+            let fullPreview = try RawDecoder.preview(from: url, halfSize: false)
+            let fullImage = try XCTUnwrap(fullPreview.cgImage())
+            XCTAssertGreaterThanOrEqual(fullImage.width, renderedImage.width)
+            XCTAssertGreaterThanOrEqual(fullImage.height, renderedImage.height)
         }
     }
 }

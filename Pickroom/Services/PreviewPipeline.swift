@@ -8,47 +8,130 @@ struct PreviewImage: @unchecked Sendable {
     let cgImage: CGImage
 }
 
-actor PreviewPipeline {
+enum PreviewPriority {
+    case foreground
+    case background
+}
+
+final class PreviewPipeline: @unchecked Sendable {
     static let shared = PreviewPipeline()
 
     private let cache = NSCache<NSString, CGImage>()
+    private let cacheLock = NSLock()
+    private var cachedSizes: [String: Set<Int>] = [:]
     private let context = CIContext(options: [
         .cacheIntermediates: false,
         .priorityRequestLow: false
     ])
+    private let foregroundQueue = DispatchQueue(
+        label: "com.junyizhang.Pickroom.preview.foreground",
+        qos: .userInitiated,
+        attributes: .concurrent
+    )
+    private let backgroundQueue = DispatchQueue(
+        label: "com.junyizhang.Pickroom.preview.background",
+        qos: .utility,
+        attributes: .concurrent
+    )
+    private let foregroundSlots = DispatchSemaphore(value: 2)
+    private let backgroundSlots = DispatchSemaphore(value: 2)
 
-    func image(for url: URL, maxPixelSize: Int) -> PreviewImage? {
-        let cacheKey = "\(url.standardizedFileURL.path)#\(maxPixelSize)" as NSString
-        if let cached = cache.object(forKey: cacheKey) {
+    private init() {
+        cache.countLimit = 160
+        cache.totalCostLimit = 512 * 1_024 * 1_024
+    }
+
+    func cachedImage(for url: URL) -> PreviewImage? {
+        let path = url.standardizedFileURL.path
+        cacheLock.lock()
+        let sizes = cachedSizes[path]?.sorted(by: >) ?? []
+        cacheLock.unlock()
+
+        for size in sizes {
+            let key = cacheKey(path: path, maxPixelSize: size)
+            if let image = cache.object(forKey: key as NSString) {
+                return PreviewImage(cgImage: image)
+            }
+        }
+        return nil
+    }
+
+    func image(
+        for url: URL,
+        maxPixelSize: Int,
+        priority: PreviewPriority = .foreground
+    ) async -> PreviewImage? {
+        let path = url.standardizedFileURL.path
+        let key = cacheKey(path: path, maxPixelSize: maxPixelSize)
+        if let cached = cache.object(forKey: key as NSString) {
             return PreviewImage(cgImage: cached)
         }
 
+        let queue = priority == .foreground ? foregroundQueue : backgroundQueue
+        let slots = priority == .foreground ? foregroundSlots : backgroundSlots
+
+        return await withCheckedContinuation { continuation in
+            queue.async { [self] in
+                slots.wait()
+                defer { slots.signal() }
+
+                if let cached = cache.object(forKey: key as NSString) {
+                    continuation.resume(returning: PreviewImage(cgImage: cached))
+                    return
+                }
+
+                let image = decodeImage(for: url, maxPixelSize: maxPixelSize)
+                if let image {
+                    store(image, path: path, maxPixelSize: maxPixelSize)
+                    continuation.resume(returning: PreviewImage(cgImage: image))
+                } else {
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+    }
+
+    private func decodeImage(for url: URL, maxPixelSize: Int) -> CGImage? {
         if let image = imageIOPreview(for: url, maxPixelSize: maxPixelSize) {
             let longEdge = max(image.width, image.height)
             if !PhotoLibraryScanner.isRaw(url)
                 || longEdge >= minimumPreviewLongEdge(for: maxPixelSize) {
-                cache.setObject(image, forKey: cacheKey)
-                return PreviewImage(cgImage: image)
+                return image
             }
         }
 
         if PhotoLibraryScanner.isRaw(url),
            let image = libRawPreview(for: url, maxPixelSize: maxPixelSize) {
-            cache.setObject(image, forKey: cacheKey)
-            return PreviewImage(cgImage: image)
+            return image
         }
 
         if let image = coreImagePreview(for: url, maxPixelSize: maxPixelSize) {
-            cache.setObject(image, forKey: cacheKey)
-            return PreviewImage(cgImage: image)
+            return image
         }
 
         return nil
     }
 
+    private func store(_ image: CGImage, path: String, maxPixelSize: Int) {
+        let key = cacheKey(path: path, maxPixelSize: maxPixelSize)
+        let cost = image.bytesPerRow * image.height
+        cache.setObject(image, forKey: key as NSString, cost: cost)
+
+        cacheLock.lock()
+        cachedSizes[path, default: []].insert(maxPixelSize)
+        cacheLock.unlock()
+    }
+
+    private func cacheKey(path: String, maxPixelSize: Int) -> String {
+        "\(path)#\(maxPixelSize)"
+    }
+
     private func minimumPreviewLongEdge(for maxPixelSize: Int) -> Int {
         if maxPixelSize <= 800 {
             return max(maxPixelSize / 2, 120)
+        }
+        if maxPixelSize > 3_200 {
+            return maxPixelSize * 9 / 10
         }
         return min(maxPixelSize * 3 / 4, 2_400)
     }

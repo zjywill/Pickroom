@@ -6,7 +6,7 @@ struct RootView: View {
     var body: some View {
         NavigationSplitView {
             SidebarView()
-                .navigationSplitViewColumnWidth(min: 190, ideal: 220, max: 260)
+                .navigationSplitViewColumnWidth(min: 204, ideal: 228, max: 272)
         } content: {
             Group {
                 if model.assets.isEmpty {
@@ -23,6 +23,7 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
         }
         .navigationSplitViewStyle(.balanced)
+        .disabled(model.isLoading)
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button {
@@ -62,32 +63,34 @@ struct RootView: View {
                     Button {
                         model.zoomOut()
                     } label: {
-                        Image(systemName: "minus.magnifyingglass")
+                        Image(systemName: "minus")
                     }
                     .disabled(model.zoomScale <= 1)
                     .accessibilityLabel("Zoom Out")
                     .help("Zoom Out (⌘−)")
 
-                    Button {
-                        model.resetZoom()
+                    Menu {
+                        Button("Fit to Window") {
+                            model.resetZoom()
+                        }
+                        Button("Actual Size") {
+                            model.zoomToActualSize()
+                        }
                     } label: {
-                        Image(systemName: "arrow.down.right.and.arrow.up.left")
+                        Text(model.zoomDisplayLabel)
+                            .font(.caption.monospacedDigit())
+                            .frame(minWidth: 38)
                     }
-                    .disabled(model.zoomScale <= 1)
-                    .accessibilityLabel("Fit to Window")
-                    .help("Fit to Window (⌘0)")
-
-                    Text(model.zoomScale <= 1.001 ? "Fit" : "\(Int((model.zoomScale * 100).rounded()))%")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .frame(minWidth: 34)
+                    .menuIndicator(.hidden)
+                    .accessibilityLabel("Zoom")
+                    .help("Zoom: \(model.zoomDisplayLabel)")
 
                     Button {
                         model.zoomIn()
                     } label: {
-                        Image(systemName: "plus.magnifyingglass")
+                        Image(systemName: "plus")
                     }
-                    .disabled(model.zoomScale >= 8)
+                    .disabled(model.zoomScale >= model.maximumZoomScale)
                     .accessibilityLabel("Zoom In")
                     .help("Zoom In (⌘+)")
                 }
@@ -99,13 +102,16 @@ struct RootView: View {
             }
         }
         .alert(
-            "Couldn’t Open Folder",
+            "No Supported Photos",
             isPresented: Binding(
                 get: { model.loadError != nil },
                 set: { if !$0 { model.loadError = nil } }
             )
         ) {
-            Button("OK", role: .cancel) {}
+            Button("Choose Another Folder") {
+                model.openFolder()
+            }
+            Button("Cancel", role: .cancel) {}
         } message: {
             Text(model.loadError ?? "")
         }
@@ -114,19 +120,25 @@ struct RootView: View {
 
 private struct LoadingOverlay: View {
     var body: some View {
-        VStack(spacing: 12) {
-            ProgressView()
-                .controlSize(.large)
-            Text("Indexing photos…")
-                .font(.headline)
-            Text("Reading previews and capture data")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        ZStack {
+            Color.black.opacity(0.14)
+
+            VStack(spacing: 12) {
+                ProgressView()
+                    .controlSize(.large)
+                Text("Indexing photos…")
+                    .font(.headline)
+                Text("Reading previews and capture data")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(28)
+            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+            .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Indexing photos")
         }
-        .padding(28)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-        .shadow(color: .black.opacity(0.18), radius: 24, y: 10)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Indexing photos")
+        .contentShape(Rectangle())
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

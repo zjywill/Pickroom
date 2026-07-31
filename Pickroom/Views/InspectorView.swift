@@ -52,11 +52,7 @@ struct InspectorView: View {
                     .padding(18)
                 }
             } else {
-                ContentUnavailableView(
-                    "No Photo Selected",
-                    systemImage: "photo",
-                    description: Text("Choose a photo to inspect its capture data.")
-                )
+                InspectorPlaceholder()
             }
         }
         .background(Color(nsColor: .windowBackgroundColor))
@@ -115,8 +111,8 @@ private struct InspectorSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title.uppercased())
-                .font(.caption2.weight(.bold))
+            Text(title)
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             content
@@ -148,14 +144,15 @@ private struct RatingPicker: View {
     let rating: Int
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             ForEach(1...5, id: \.self) { value in
                 Button {
                     model.setRating(rating == value ? 0 : value)
                 } label: {
                     Image(systemName: value <= rating ? "star.fill" : "star")
                         .foregroundStyle(value <= rating ? .yellow : .secondary)
-                        .frame(width: 24, height: 24)
+                        .frame(width: 34, height: 34)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("\(value) star\(value == 1 ? "" : "s")")
@@ -163,6 +160,28 @@ private struct RatingPicker: View {
                 .accessibilityAddTraits(value == rating ? .isSelected : [])
             }
         }
+    }
+}
+
+private struct InspectorPlaceholder: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "sidebar.right")
+                .font(.title3)
+                .foregroundStyle(.tertiary)
+
+            Text("Select a photo")
+                .font(.callout.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            Text("Capture details will appear here.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }
 

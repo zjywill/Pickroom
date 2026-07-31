@@ -38,14 +38,6 @@ struct EmptyLibraryView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
 
-            HStack(spacing: 18) {
-                Label("RAW + JPEG pairing", systemImage: "link")
-                Label("Local decisions", systemImage: "internaldrive")
-                Label("Keyboard first", systemImage: "keyboard")
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -75,14 +67,28 @@ struct EmptyFilterView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        ContentUnavailableView {
-            Label("No \(model.filter.title)", systemImage: model.filter.symbol)
-        } description: {
-            Text("Choose another collection or continue reviewing photos.")
-        } actions: {
+        VStack(spacing: 14) {
+            Image(systemName: model.filter.symbol)
+                .font(.title2)
+                .foregroundStyle(.secondary)
+
+            VStack(spacing: 5) {
+                Text("No \(model.filter.title)")
+                    .font(.title3.weight(.semibold))
+
+                Text("There are no photos in this collection.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
             Button("Show All Photos") {
                 model.filter = .all
             }
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
         }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(nsColor: .controlBackgroundColor))
     }
 }
