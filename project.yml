@@ -1,0 +1,55 @@
+name: Pickroom
+options:
+  bundleIdPrefix: com.junyizhang
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    CODE_SIGN_STYLE: Automatic
+packages:
+  RawEngine:
+    path: Packages/RawEngine
+targets:
+  Pickroom:
+    type: application
+    platform: macOS
+    sources:
+      - path: Pickroom
+    dependencies:
+      - package: RawEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.junyizhang.Pickroom
+        PRODUCT_NAME: Pickroom
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Pickroom
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.photography
+        INFOPLIST_KEY_NSHumanReadableCopyright: Copyright © 2026 Junyi Zhang. All rights reserved.
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_APP_SANDBOX: NO
+        SWIFT_STRICT_CONCURRENCY: targeted
+  PickroomTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: PickroomTests
+    dependencies:
+      - target: Pickroom
+      - package: RawEngine
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.junyizhang.PickroomTests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Pickroom:
+    build:
+      targets:
+        Pickroom: all
+        PickroomTests: [test]
+    test:
+      targets:
+        - PickroomTests

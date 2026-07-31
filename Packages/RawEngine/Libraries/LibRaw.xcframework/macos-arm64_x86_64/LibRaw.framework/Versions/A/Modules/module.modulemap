@@ -1,0 +1,4 @@
+framework module LibRaw [system] {
+    textual header "libraw.h"
+    export *
+}
