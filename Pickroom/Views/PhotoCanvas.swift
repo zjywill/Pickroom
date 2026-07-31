@@ -83,6 +83,15 @@ struct PhotoCanvas: View {
             }
             .contentShape(Rectangle())
             .clipped()
+            .overlay {
+                TrackpadScrollCatcher { sample in
+                    scrollPan(
+                        sample,
+                        imageRect: imageRect,
+                        containerSize: geometry.size
+                    )
+                }
+            }
             .gesture(panGesture(imageRect: imageRect, containerSize: geometry.size))
             .simultaneousGesture(
                 magnifyGesture(imageRect: imageRect, containerSize: geometry.size)
@@ -205,6 +214,25 @@ struct PhotoCanvas: View {
                     zoom: model.zoomScale
                 )
             }
+    }
+
+    /// Pans a zoomed photo with two-finger scrolling, matching the drag gesture.
+    private func scrollPan(
+        _ sample: ScrollSample,
+        imageRect: CGRect,
+        containerSize: CGSize
+    ) {
+        guard model.zoomScale > 1.001 else { return }
+
+        panOffset = constrained(
+            CGSize(
+                width: panOffset.width + sample.deltaX,
+                height: panOffset.height + sample.deltaY
+            ),
+            imageRect: imageRect,
+            containerSize: containerSize,
+            zoom: model.zoomScale
+        )
     }
 
     private func magnifyGesture(imageRect: CGRect, containerSize: CGSize) -> some Gesture {
