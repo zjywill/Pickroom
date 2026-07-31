@@ -46,30 +46,31 @@ fi
 rm -rf "$DERIVED_DATA" "$APP"
 mkdir -p "$DIST"
 
-XCODEBUILD_ARGS=()
+XCODEBUILD_ARGS=(
+    "-project" "$PROJECT"
+    "-scheme" "$SCHEME"
+    "-configuration" "Release"
+    "-destination" "generic/platform=macOS"
+    "-derivedDataPath" "$DERIVED_DATA"
+    "ARCHS=$ARCHS"
+    "ONLY_ACTIVE_ARCH=NO"
+    "CODE_SIGNING_ALLOWED=NO"
+    "MARKETING_VERSION=$VERSION"
+    "CURRENT_PROJECT_VERSION=$BUILD"
+)
 if [ "$OUTER_SANDBOX" = "1" ]; then
     echo "==> Disabling nested Xcode and Swift subprocess sandboxes"
-    XCODEBUILD_ARGS+=(
+    XCODEBUILD_ARGS=(
         "-IDEPackageSupportDisableManifestSandbox=1"
         "-IDEPackageSupportDisablePluginExecutionSandbox=1"
         "OTHER_SWIFT_FLAGS=-disable-sandbox"
+        "${XCODEBUILD_ARGS[@]}"
     )
 fi
 
 # Build unsigned so the release path is independent of local Apple accounts.
 # The finished bundle is signed explicitly below, including nested frameworks.
-xcodebuild "${XCODEBUILD_ARGS[@]}" \
-    -project "$PROJECT" \
-    -scheme "$SCHEME" \
-    -configuration Release \
-    -destination "generic/platform=macOS" \
-    -derivedDataPath "$DERIVED_DATA" \
-    ARCHS="$ARCHS" \
-    ONLY_ACTIVE_ARCH=NO \
-    CODE_SIGNING_ALLOWED=NO \
-    MARKETING_VERSION="$VERSION" \
-    CURRENT_PROJECT_VERSION="$BUILD" \
-    build
+xcodebuild "${XCODEBUILD_ARGS[@]}" build
 
 BUILT_APP="$DERIVED_DATA/Build/Products/Release/$APP_NAME.app"
 [ -d "$BUILT_APP" ] || {
