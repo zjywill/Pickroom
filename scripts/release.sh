@@ -173,9 +173,9 @@ REMOTE_FORMULA="$(
     gh api -H 'Accept: application/vnd.github.raw+json' \
         "repos/$TAP_REPO/contents/$FORMULA"
 )"
-echo "$REMOTE_FORMULA" | grep -q "tag: \"$TAG\"" ||
+echo "$REMOTE_FORMULA" | grep -Eq "tag:[[:space:]]+\"$TAG\"" ||
     die "remote formula does not name $TAG"
-echo "$REMOTE_FORMULA" | grep -q "revision: \"$REVISION\"" ||
+echo "$REMOTE_FORMULA" | grep -Eq "revision:[[:space:]]+\"$REVISION\"" ||
     die "remote formula does not pin $REVISION"
 
 cat <<EOF

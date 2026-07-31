@@ -61,8 +61,8 @@ until Developer ID signing and notarization are actually implemented.
 The source repository is private. The formula intentionally fetches:
 
 ```ruby
-url "git@github.com:zjywill/Pickroom.git",
-    tag: "v<version>",
+url "ssh://git@github.com/zjywill/Pickroom.git",
+    tag:      "v<version>",
     revision: "<exact commit>"
 ```
 
