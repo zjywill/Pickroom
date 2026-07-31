@@ -70,6 +70,12 @@ Do not replace this with a public GitHub tarball URL while the repo remains
 private. Tap users need SSH access to the source repository. The formula builds
 from source, so its app does not carry download quarantine.
 
+The formula must set `OUTER_SANDBOX=1`. Homebrew already wraps formula builds
+in a macOS sandbox, while Xcode separately sandboxes Swift package manifests,
+package plugins, and compiler macro subprocesses. `scripts/bundle.sh` uses this
+opt-in only for the Homebrew path to avoid unsupported nested `sandbox-exec`
+calls; normal local and release builds keep Xcode's default sandboxing.
+
 After installation, put a real app copy in Applications:
 
 ```bash

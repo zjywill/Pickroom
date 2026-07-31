@@ -11,6 +11,7 @@
 #   UNIVERSAL=0      build only for the current Mac
 #   DMG=0            stop after assembling Pickroom.app
 #   SMOKE=1          launch the built executable briefly
+#   OUTER_SANDBOX=1  avoid nested Xcode/Swift sandboxes (for Homebrew builds)
 set -euo pipefail
 
 APP_NAME="Pickroom"
@@ -21,6 +22,7 @@ UNIVERSAL="${UNIVERSAL:-1}"
 DMG="${DMG:-1}"
 SMOKE="${SMOKE:-0}"
 BUILD="${BUILD:-1}"
+OUTER_SANDBOX="${OUTER_SANDBOX:-0}"
 
 cd "$(dirname "$0")/.."
 
@@ -44,9 +46,19 @@ fi
 rm -rf "$DERIVED_DATA" "$APP"
 mkdir -p "$DIST"
 
+XCODEBUILD_ARGS=()
+if [ "$OUTER_SANDBOX" = "1" ]; then
+    echo "==> Disabling nested Xcode and Swift subprocess sandboxes"
+    XCODEBUILD_ARGS+=(
+        "-IDEPackageSupportDisableManifestSandbox=1"
+        "-IDEPackageSupportDisablePluginExecutionSandbox=1"
+        "OTHER_SWIFT_FLAGS=-disable-sandbox"
+    )
+fi
+
 # Build unsigned so the release path is independent of local Apple accounts.
 # The finished bundle is signed explicitly below, including nested frameworks.
-xcodebuild \
+xcodebuild "${XCODEBUILD_ARGS[@]}" \
     -project "$PROJECT" \
     -scheme "$SCHEME" \
     -configuration Release \

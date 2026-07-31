@@ -15,6 +15,7 @@ class Pickroom < Formula
   depends_on macos: :sonoma
 
   def install
+    ENV["OUTER_SANDBOX"] = "1"
     ENV["UNIVERSAL"] = "0"
     ENV["DMG"] = "0"
     ENV["DEST"] = buildpath/"dist"
