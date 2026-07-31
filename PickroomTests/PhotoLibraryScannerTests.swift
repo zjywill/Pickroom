@@ -28,4 +28,11 @@ final class PhotoLibraryScannerTests: XCTestCase {
         XCTAssertEqual(result.first?.0, jpeg)
         XCTAssertNil(result.first?.1)
     }
+
+    func testRecognizesSVGAsSupportedImage() {
+        let svg = URL(fileURLWithPath: "/tmp/illustration.svg")
+
+        XCTAssertTrue(PhotoLibraryScanner.isSupported(svg))
+        XCTAssertFalse(PhotoLibraryScanner.isRaw(svg))
+    }
 }

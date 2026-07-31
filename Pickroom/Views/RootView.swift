@@ -23,7 +23,7 @@ struct RootView: View {
                 .navigationSplitViewColumnWidth(min: 240, ideal: 280, max: 340)
         }
         .navigationSplitViewStyle(.balanced)
-        .disabled(model.isLoading)
+        .disabled(model.isLoading || model.isManagingRejects)
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button {
@@ -114,6 +114,33 @@ struct RootView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(model.loadError ?? "")
+        }
+        .alert(
+            "Couldn’t Complete File Operation",
+            isPresented: Binding(
+                get: { model.fileOperationError != nil },
+                set: { if !$0 { model.fileOperationError = nil } }
+            )
+        ) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.fileOperationError ?? "")
+        }
+        .alert(
+            "Move Reject Files to Trash?",
+            isPresented: Binding(
+                get: { model.isShowingTrashConfirmation },
+                set: { model.isShowingTrashConfirmation = $0 }
+            )
+        ) {
+            Button("Cancel", role: .cancel) {}
+            Button("Move to Trash", role: .destructive) {
+                Task {
+                    await model.moveRejectedPhotosToTrash()
+                }
+            }
+        } message: {
+            Text(model.trashConfirmationMessage)
         }
     }
 }

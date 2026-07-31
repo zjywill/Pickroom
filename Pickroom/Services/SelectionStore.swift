@@ -11,6 +11,14 @@ actor SelectionStore {
         fileURL = directory.appendingPathComponent("selections.json")
     }
 
+    init(fileURL: URL, fileManager: FileManager = .default) {
+        try? fileManager.createDirectory(
+            at: fileURL.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        self.fileURL = fileURL
+    }
+
     func load() -> [String: StoredSelection] {
         guard
             let data = try? Data(contentsOf: fileURL),

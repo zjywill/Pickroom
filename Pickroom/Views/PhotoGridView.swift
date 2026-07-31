@@ -65,6 +65,16 @@ private struct PhotoGridTile: View {
                             .background(.black.opacity(0.70), in: Circle())
                             .padding(8)
                     }
+
+                    if asset.isArchived {
+                        Image(systemName: "archivebox.fill")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.90))
+                            .padding(6)
+                            .background(.black.opacity(0.70), in: Circle())
+                            .padding(8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                    }
                 }
                 .overlay {
                     RoundedRectangle(cornerRadius: 7, style: .continuous)

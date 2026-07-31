@@ -64,6 +64,16 @@ private struct FilmstripThumbnail: View {
                         .background(.black.opacity(0.72), in: Circle())
                         .padding(4)
                 }
+
+                if asset.isArchived {
+                    Image(systemName: "archivebox.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.88))
+                        .padding(5)
+                        .background(.black.opacity(0.72), in: Circle())
+                        .padding(4)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                }
             }
             .overlay {
                 RoundedRectangle(cornerRadius: 5, style: .continuous)

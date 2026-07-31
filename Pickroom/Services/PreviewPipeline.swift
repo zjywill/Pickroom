@@ -92,6 +92,13 @@ final class PreviewPipeline: @unchecked Sendable {
     }
 
     private func decodeImage(for url: URL, maxPixelSize: Int) -> CGImage? {
+        if SVGSupport.isSVG(url) {
+            return SVGSupport.rasterizedImage(
+                for: url,
+                maxPixelSize: maxPixelSize
+            )
+        }
+
         if let image = imageIOPreview(for: url, maxPixelSize: maxPixelSize) {
             let longEdge = max(image.width, image.height)
             if !PhotoLibraryScanner.isRaw(url)

@@ -87,4 +87,44 @@ final class PhotoMetadataTests: XCTestCase {
         XCTAssertEqual(model.actualPixelScale, 1, accuracy: 0.0001)
         XCTAssertEqual(model.zoomDisplayLabel, "1:1")
     }
+
+    func testReadsSVGDimensionsFromViewBox() throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Pickroom-\(UUID().uuidString).svg")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data(
+            """
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 450">
+              <rect width="800" height="450" fill="#123456"/>
+            </svg>
+            """.utf8
+        ).write(to: url)
+
+        let metadata = MetadataReader.read(from: url, isRaw: false)
+
+        XCTAssertEqual(metadata.pixelWidth, 800)
+        XCTAssertEqual(metadata.pixelHeight, 450)
+        XCTAssertEqual(metadata.decoderName, "AppKit SVG")
+        XCTAssertEqual(metadata.megapixelsDisplay, "Vector")
+    }
+
+    func testRasterizesSVGPreviewAtRequestedLongEdge() async throws {
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("Pickroom-\(UUID().uuidString).svg")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try Data(
+            """
+            <svg xmlns="http://www.w3.org/2000/svg" width="320" height="180">
+              <rect width="320" height="180" fill="#123456"/>
+              <circle cx="160" cy="90" r="50" fill="#ffcc00"/>
+            </svg>
+            """.utf8
+        ).write(to: url)
+
+        let loaded = await PreviewPipeline.shared.image(for: url, maxPixelSize: 640)
+        let preview = try XCTUnwrap(loaded)
+
+        XCTAssertEqual(preview.cgImage.width, 640)
+        XCTAssertEqual(preview.cgImage.height, 360)
+    }
 }

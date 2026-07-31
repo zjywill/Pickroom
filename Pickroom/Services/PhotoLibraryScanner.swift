@@ -9,19 +9,32 @@ actor PhotoLibraryScanner {
     ]
 
     static let commonImageExtensions: Set<String> = [
-        "avif", "heic", "heif", "jpeg", "jpg", "png", "tif", "tiff", "webp"
+        "avif", "heic", "heif", "jpeg", "jpg", "png", "svg", "tif", "tiff", "webp"
     ]
 
     func scan(folder: URL) -> [PhotoAsset] {
-        let urls = Self.imageURLs(in: folder)
-        let pairs = Self.preferredPhotoPairs(from: urls)
+        let activeAssets = Self.assets(
+            from: Self.imageURLs(in: folder),
+            isArchived: false
+        )
+        let archivedAssets = Self.assets(
+            from: Self.imageURLs(in: RejectArchive.folder(in: folder)),
+            isArchived: true
+        )
 
+        return activeAssets + archivedAssets
+    }
+
+    private static func assets(from urls: [URL], isArchived: Bool) -> [PhotoAsset] {
+        let pairs = preferredPhotoPairs(from: urls)
         return pairs.map { primary, companion in
-            let isRaw = Self.isRaw(primary)
+            let isRaw = isRaw(primary)
             return PhotoAsset(
                 url: primary,
                 companionURL: companion,
-                metadata: MetadataReader.read(from: primary, isRaw: isRaw)
+                decision: isArchived ? .reject : .unreviewed,
+                metadata: MetadataReader.read(from: primary, isRaw: isRaw),
+                isArchived: isArchived
             )
         }
     }

@@ -2,11 +2,12 @@ import Foundation
 
 struct PhotoAsset: Identifiable, Hashable, Sendable {
     let id: UUID
-    let url: URL
-    let companionURL: URL?
+    var url: URL
+    var companionURL: URL?
     var decision: PhotoDecision
     var rating: Int
     var metadata: PhotoMetadata
+    var isArchived: Bool
 
     init(
         id: UUID = UUID(),
@@ -14,7 +15,8 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
         companionURL: URL? = nil,
         decision: PhotoDecision = .unreviewed,
         rating: Int = 0,
-        metadata: PhotoMetadata
+        metadata: PhotoMetadata,
+        isArchived: Bool = false
     ) {
         self.id = id
         self.url = url
@@ -22,6 +24,7 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
         self.decision = decision
         self.rating = rating
         self.metadata = metadata
+        self.isArchived = isArchived
     }
 
     var filename: String {

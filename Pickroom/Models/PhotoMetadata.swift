@@ -66,6 +66,9 @@ struct PhotoMetadata: Codable, Hashable, Sendable {
     }
 
     var megapixelsDisplay: String {
+        if fileExtension.caseInsensitiveCompare("SVG") == .orderedSame {
+            return "Vector"
+        }
         guard let pixelWidth, let pixelHeight else { return "—" }
         let megapixels = Double(pixelWidth * pixelHeight) / 1_000_000
         return megapixels.formatted(.number.precision(.fractionLength(1))) + " MP"

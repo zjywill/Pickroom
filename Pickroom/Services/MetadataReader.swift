@@ -44,7 +44,13 @@ enum MetadataReader {
             }
         }
 
-        if isRaw {
+        if SVGSupport.isSVG(url) {
+            if let dimensions = SVGSupport.dimensions(from: url) {
+                metadata.pixelWidth = Int(dimensions.width.rounded())
+                metadata.pixelHeight = Int(dimensions.height.rounded())
+            }
+            metadata.decoderName = "AppKit SVG"
+        } else if isRaw {
             mergeLibRawMetadata(into: &metadata, from: url)
         } else {
             metadata.decoderName = "ImageIO"

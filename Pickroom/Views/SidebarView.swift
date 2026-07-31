@@ -67,6 +67,32 @@ struct SidebarView: View {
                     SidebarSectionTitle("Progress")
                 }
             }
+
+            Section {
+                Button(role: .destructive) {
+                    model.requestTrashConfirmation()
+                } label: {
+                    HStack(spacing: 9) {
+                        Image(systemName: "trash")
+                            .frame(width: 18)
+
+                        Text("Move to Trash…")
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+
+                        Spacer(minLength: 0)
+
+                        if model.isManagingRejects {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 8)
+                }
+                .disabled(model.rejectedAssetCount == 0 || model.isManagingRejects)
+                .help("Move rejected RAW and paired files to Trash after confirmation")
+            }
         }
         .listStyle(.sidebar)
         .navigationTitle("Pickroom")

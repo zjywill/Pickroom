@@ -432,6 +432,8 @@ private struct DecisionBadge: View {
 }
 
 private struct CompositionGrid: View {
+    @Environment(\.displayScale) private var displayScale
+
     var body: some View {
         Canvas { context, size in
             var path = Path()
@@ -441,11 +443,17 @@ private struct CompositionGrid: View {
                 path.move(to: CGPoint(x: 0, y: size.height * fraction))
                 path.addLine(to: CGPoint(x: size.width, y: size.height * fraction))
             }
-            context.stroke(path, with: .color(.white.opacity(0.72)), lineWidth: 1)
-        }
-        .overlay {
-            Rectangle()
-                .strokeBorder(.black.opacity(0.28), lineWidth: 1)
+            let pixel = 1 / max(displayScale, 1)
+            context.stroke(
+                path,
+                with: .color(.black.opacity(0.16)),
+                lineWidth: pixel * 2
+            )
+            context.stroke(
+                path,
+                with: .color(.white.opacity(0.32)),
+                lineWidth: pixel
+            )
         }
     }
 }

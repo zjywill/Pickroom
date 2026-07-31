@@ -22,7 +22,7 @@ struct EmptyLibraryView: View {
                 Text("Open a photo folder")
                     .font(.title2.weight(.semibold))
 
-                Text("RAW files stay where they are. Pickroom only records your selections.")
+                Text("Photos stay in place until you explicitly move rejects to Trash.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)

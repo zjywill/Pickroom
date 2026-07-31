@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct InspectorView: View {
@@ -80,6 +81,12 @@ private struct InspectorHeader: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                if asset.isArchived {
+                    Label("Collected", systemImage: "archivebox.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Text(asset.filename)
@@ -144,21 +151,72 @@ private struct RatingPicker: View {
     let rating: Int
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(1...5, id: \.self) { value in
-                Button {
-                    model.setRating(rating == value ? 0 : value)
-                } label: {
-                    Image(systemName: value <= rating ? "star.fill" : "star")
-                        .foregroundStyle(value <= rating ? .yellow : .secondary)
-                        .frame(width: 34, height: 34)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("\(value) star\(value == 1 ? "" : "s")")
-                .accessibilityLabel("\(value) star\(value == 1 ? "" : "s")")
-                .accessibilityAddTraits(value == rating ? .isSelected : [])
-            }
+        RatingLevelIndicator(
+            rating: Binding(
+                get: { model.currentAsset?.rating ?? rating },
+                set: { model.setRating($0) }
+            )
+        )
+        .frame(height: 32)
+        .fixedSize(horizontal: true, vertical: false)
+        .help("Drag to set a rating from zero to five stars")
+    }
+}
+
+private struct RatingLevelIndicator: NSViewRepresentable {
+    @Binding var rating: Int
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeNSView(context: Context) -> NSLevelIndicator {
+        let indicator = NSLevelIndicator()
+        indicator.levelIndicatorStyle = .rating
+        indicator.minValue = 0
+        indicator.maxValue = 5
+        indicator.doubleValue = Double(rating)
+        indicator.isEditable = true
+        indicator.isContinuous = true
+        indicator.placeholderVisibility = .always
+        indicator.fillColor = .systemYellow
+        let symbolConfiguration = NSImage.SymbolConfiguration(
+            pointSize: 19,
+            weight: .regular
+        )
+        indicator.ratingImage = NSImage(
+            systemSymbolName: "star.fill",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(symbolConfiguration)
+        indicator.ratingPlaceholderImage = NSImage(
+            systemSymbolName: "star",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(symbolConfiguration)
+        indicator.target = context.coordinator
+        indicator.action = #selector(Coordinator.ratingChanged(_:))
+        indicator.setAccessibilityLabel("Photo rating")
+        return indicator
+    }
+
+    func updateNSView(_ indicator: NSLevelIndicator, context: Context) {
+        context.coordinator.parent = self
+        let newValue = Double(rating)
+        if indicator.doubleValue != newValue {
+            indicator.doubleValue = newValue
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var parent: RatingLevelIndicator
+
+        init(_ parent: RatingLevelIndicator) {
+            self.parent = parent
+        }
+
+        @objc
+        func ratingChanged(_ sender: NSLevelIndicator) {
+            parent.rating = min(max(Int(sender.doubleValue.rounded()), 0), 5)
         }
     }
 }
@@ -216,7 +274,7 @@ private struct InspectorToggle: View {
     @Binding var isOn: Bool
 
     var body: some View {
-        Toggle(isOn: $isOn) {
+        HStack(spacing: 12) {
             Label {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title)
@@ -228,7 +286,15 @@ private struct InspectorToggle: View {
                 Image(systemName: symbol)
                     .frame(width: 18)
             }
+
+            Spacer(minLength: 12)
+
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .accessibilityLabel(title)
         }
-        .toggleStyle(.switch)
+        .frame(maxWidth: .infinity)
     }
 }
