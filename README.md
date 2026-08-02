@@ -63,11 +63,8 @@ account:
 VERSION=0.1.0 scripts/bundle.sh
 ```
 
-Render the checked-in SVG artwork into every macOS AppIcon size:
-
-```bash
-Tools/render-app-icon.py
-```
+The app icon is maintained as the Icon Composer project at
+`Pickroom/AppIcon.icon`.
 
 Pickroom uses a dual decoding pipeline:
 
