@@ -1,17 +1,32 @@
 #!/bin/bash
-# Build Pickroom.app, ad-hoc sign every code bundle, and optionally create a DMG.
+# Build Pickroom.app, sign every code bundle inside it, and (by default) wrap
+# the result in a DMG.
 #
-# Ad-hoc signing (`codesign --sign -`) needs no paid Apple Developer account.
-# It verifies bundle integrity but is not Developer ID signing or notarization,
-# so a DMG downloaded from GitHub will still be quarantined by Gatekeeper.
+# Signing has two tiers and the script picks whichever this machine can do:
+#
+#   Developer ID  a "Developer ID Application" certificate in the keychain.
+#                 Signed with the hardened runtime and a secure timestamp,
+#                 then — if notarytool credentials are stored — submitted to
+#                 Apple and stapled. That is the combination Gatekeeper wants
+#                 from a DMG that travelled over the network.
+#   ad-hoc        no such certificate. Runs on this machine and on any Mac
+#                 you copy it to by hand, but a downloaded DMG picks up a
+#                 quarantine flag and Gatekeeper refuses it.
 #
 # Env:
 #   VERSION, BUILD   values written to the generated Info.plist
-#   DEST             output directory                         (default ./dist)
+#   DEST             output directory                          (default ./dist)
 #   UNIVERSAL=0      build only for the current Mac
 #   DMG=0            stop after assembling Pickroom.app
 #   SMOKE=1          launch the built executable briefly
-#   OUTER_SANDBOX=1  avoid nested Xcode/Swift sandboxes (for Homebrew builds)
+#   SIGN_ID          codesign identity        (default: the Developer ID
+#                    Application certificate found in the keychain)
+#   SIGN_ID=-        force ad-hoc even when a certificate is present
+#   NOTARIZE=0       Developer ID sign, but skip Apple's notary service
+#   NOTARY_PROFILE   notarytool keychain profile      (default: the first of
+#                    "pickroom thegit" the keychain answers for)
+#   NOTARY_TIMEOUT   how long to wait for one verdict            (default 2h)
+#   NOTARY_RETRIES   fresh submissions before giving up          (default 1)
 set -euo pipefail
 
 APP_NAME="Pickroom"
@@ -22,9 +37,18 @@ UNIVERSAL="${UNIVERSAL:-1}"
 DMG="${DMG:-1}"
 SMOKE="${SMOKE:-0}"
 BUILD="${BUILD:-1}"
-OUTER_SANDBOX="${OUTER_SANDBOX:-0}"
+NOTARIZE="${NOTARIZE:-1}"
 
 cd "$(dirname "$0")/.."
+
+# notarise(), verify_distribution(), build_dmg() and the NOTARY_* defaults
+# live in one place because notarise-release.sh needs exactly the same rules
+# to backfill a ticket onto a release that shipped while Apple's queue was
+# down, and release.sh needs the same checks to gate the tag.
+. "$(dirname "$0")/release-lib.sh"
+
+SIGN_ID="${SIGN_ID:-$(find_sign_id)}"
+SIGN_ID="${SIGN_ID:--}"
 
 VERSION="${VERSION:-$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')}"
 VERSION="${VERSION:-0.0.0}"
@@ -46,31 +70,23 @@ fi
 rm -rf "$DERIVED_DATA" "$APP"
 mkdir -p "$DIST"
 
-XCODEBUILD_ARGS=(
-    "-project" "$PROJECT"
-    "-scheme" "$SCHEME"
-    "-configuration" "Release"
-    "-destination" "generic/platform=macOS"
-    "-derivedDataPath" "$DERIVED_DATA"
-    "ARCHS=$ARCHS"
-    "ONLY_ACTIVE_ARCH=NO"
-    "CODE_SIGNING_ALLOWED=NO"
-    "MARKETING_VERSION=$VERSION"
-    "CURRENT_PROJECT_VERSION=$BUILD"
-)
-if [ "$OUTER_SANDBOX" = "1" ]; then
-    echo "==> Disabling nested Xcode and Swift subprocess sandboxes"
-    XCODEBUILD_ARGS=(
-        "-IDEPackageSupportDisableManifestSandbox=1"
-        "-IDEPackageSupportDisablePluginExecutionSandbox=1"
-        "OTHER_SWIFT_FLAGS=-disable-sandbox"
-        "${XCODEBUILD_ARGS[@]}"
-    )
-fi
-
-# Build unsigned so the release path is independent of local Apple accounts.
-# The finished bundle is signed explicitly below, including nested frameworks.
-xcodebuild "${XCODEBUILD_ARGS[@]}" build
+# Built unsigned and signed explicitly below. Xcode's automatic signing picks
+# whatever provisioning the machine happens to have, which is a different
+# certificate on a different Mac; a release has to be reproducible from the
+# script rather than from a local Xcode account. CODE_SIGNING_ALLOWED=NO also
+# keeps get-task-allow out of the bundle, which notarisation rejects outright.
+xcodebuild \
+    -project "$PROJECT" \
+    -scheme "$SCHEME" \
+    -configuration Release \
+    -destination "generic/platform=macOS" \
+    -derivedDataPath "$DERIVED_DATA" \
+    "ARCHS=$ARCHS" \
+    "ONLY_ACTIVE_ARCH=NO" \
+    "CODE_SIGNING_ALLOWED=NO" \
+    "MARKETING_VERSION=$VERSION" \
+    "CURRENT_PROJECT_VERSION=$BUILD" \
+    build
 
 BUILT_APP="$DERIVED_DATA/Build/Products/Release/$APP_NAME.app"
 [ -d "$BUILT_APP" ] || {
@@ -82,16 +98,36 @@ echo "==> Assembling $APP_NAME.app"
 /usr/bin/ditto "$BUILT_APP" "$APP"
 /usr/bin/xattr -cr "$APP"
 
+# --options runtime is what makes a signature notarisable, and it is also why
+# this can't be bolted on at release time: the hardened runtime changes how
+# the app behaves at launch, so the build that gets smoke tested below has to
+# be the build that was signed this way.
 sign_path() {
-    /usr/bin/codesign \
-        --force \
-        --sign - \
-        --timestamp=none \
-        --generate-entitlement-der \
-        "$1"
+    if [ "$SIGN_ID" = "-" ]; then
+        /usr/bin/codesign \
+            --force \
+            --sign - \
+            --timestamp=none \
+            --generate-entitlement-der \
+            "$1"
+    else
+        /usr/bin/codesign \
+            --force \
+            --options runtime \
+            --timestamp \
+            --sign "$SIGN_ID" \
+            "$1"
+    fi
 }
 
-echo "==> Ad-hoc signing nested code"
+if [ "$SIGN_ID" = "-" ]; then
+    echo "==> Ad-hoc signing (no Developer ID certificate in the keychain)"
+else
+    echo "==> Signing with $SIGN_ID"
+fi
+
+# Inside out: codesign seals a bundle's nested code into the enclosing
+# signature, so anything signed after its container invalidates the container.
 if [ -d "$APP/Contents/Frameworks" ]; then
     find "$APP/Contents/Frameworks" -type f -name '*.dylib' -print0 |
         while IFS= read -r -d '' item; do
@@ -113,7 +149,6 @@ for directory in "$APP/Contents/PlugIns" "$APP/Contents/XPCServices"; do
     fi
 done
 
-echo "==> Ad-hoc signing app"
 sign_path "$APP"
 
 echo "==> Verifying bundle"
@@ -149,6 +184,9 @@ if [ "$UNIVERSAL" = "1" ]; then
     }
 fi
 
+# Before notarisation, not after: a hardened-runtime app that dies on launch
+# should fail here in three seconds rather than after a wait on Apple's queue
+# that can run to hours.
 if [ "$SMOKE" = "1" ]; then
     echo "==> Smoke launching app"
     LOG="$DIST/$APP_NAME-smoke.log"
@@ -165,6 +203,38 @@ if [ "$SMOKE" = "1" ]; then
     rm -f "$LOG"
 fi
 
+# Notarise the .app before it goes in the DMG, not just the DMG afterwards.
+# A ticket stapled to the DMG only covers the DMG: drag the app to
+# /Applications, throw the DMG away, and the first launch on a Mac that is
+# offline has nothing local to check. Stapling both costs one extra round
+# trip and makes the app self-contained.
+CAN_NOTARISE=0
+if [ "$SIGN_ID" != "-" ] && [ "$NOTARIZE" = "1" ]; then
+    # Assigned back explicitly: notary_profile() caches into NOTARY_PROFILE,
+    # but a command substitution runs in a subshell, so the cache would be
+    # thrown away and every later call would re-probe Apple.
+    if PROFILE="$(notary_profile)"; then
+        NOTARY_PROFILE="$PROFILE"
+        echo "==> Using notarytool profile '$NOTARY_PROFILE'"
+        CAN_NOTARISE=1
+    else
+        echo "    (no notarytool profile in $NOTARY_PROFILE_CANDIDATES — skipping notarisation)"
+    fi
+fi
+
+if [ "$CAN_NOTARISE" = "1" ]; then
+    # notarytool takes a zip, a DMG or a pkg — never a bare .app — so the
+    # bundle goes up zipped and the ticket comes back onto the .app itself.
+    ZIP="$DIST/$APP_NAME-notarise.zip"
+    /usr/bin/ditto -c -k --keepParent "$APP" "$ZIP"
+    if ! notarise "$ZIP" "$APP"; then rm -f "$ZIP"; exit 1; fi
+    rm -f "$ZIP"
+    # Asked here rather than assumed from a clean exit: everything above
+    # reports success on a build whose ticket never landed, and the failure
+    # only shows up on someone else's Mac.
+    verify_distribution "$APP" execute || exit 1
+fi
+
 if [ "$DMG" != "1" ]; then
     echo
     echo "Built:"
@@ -175,24 +245,17 @@ if [ "$DMG" != "1" ]; then
 fi
 
 echo "==> Building DMG"
-STAGE="$DIST/dmg"
-rm -rf "$STAGE" "$DMG_PATH" "$CHECKSUM_PATH"
-mkdir -p "$STAGE"
-/usr/bin/ditto "$APP" "$STAGE/$APP_NAME.app"
-ln -s /Applications "$STAGE/Applications"
-/usr/bin/hdiutil create \
-    -quiet \
-    -volname "$APP_NAME" \
-    -srcfolder "$STAGE" \
-    -ov \
-    -format UDZO \
-    "$DMG_PATH"
-rm -rf "$STAGE"
+rm -f "$DMG_PATH" "$CHECKSUM_PATH"
+build_dmg "$APP" "$DMG_PATH" "$APP_NAME" "$SIGN_ID"
 
-(
-    cd "$DIST"
-    /usr/bin/shasum -a 256 "$(basename "$DMG_PATH")" >"$(basename "$CHECKSUM_PATH")"
-)
+if [ "$CAN_NOTARISE" = "1" ]; then
+    notarise "$DMG_PATH" "$DMG_PATH"
+    verify_distribution "$DMG_PATH" open || exit 1
+fi
+
+# Last, so the hash belongs to the finished image rather than to the one that
+# existed before a ticket was stapled into it.
+write_checksum "$DMG_PATH"
 
 echo
 echo "Built:"

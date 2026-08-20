@@ -8,16 +8,18 @@ visible while you decide.
 
 ### Homebrew
 
-The source repository is private, so installing from the tap requires GitHub
-SSH access to `zjywill/Pickroom`.
+The cask installs the same signed DMG the Releases page serves, straight into
+Applications.
 
 ```bash
-brew install zjywill/tap/pickroom
-rm -rf /Applications/Pickroom.app
-cp -R "$(brew --prefix pickroom)/Pickroom.app" /Applications/Pickroom.app
+brew install --cask zjywill/tap/pickroom
 ```
 
-Quit Pickroom and repeat the copy after each upgrade.
+Upgrading from the old build-from-source formula? Once:
+
+```bash
+brew uninstall pickroom && brew install --cask zjywill/tap/pickroom
+```
 
 ### GitHub Release
 
@@ -25,13 +27,8 @@ Download the latest DMG from
 [GitHub Releases](https://github.com/zjywill/Pickroom/releases), open it, and
 drag Pickroom to Applications.
 
-Pickroom is currently ad-hoc signed rather than Developer ID signed and
-notarized. macOS may block the first launch after downloading the DMG. Use
-**System Settings -> Privacy & Security -> Open Anyway**, or run:
-
-```bash
-xattr -dr com.apple.quarantine /Applications/Pickroom.app
-```
+The DMG and the app inside it are signed with an Apple Developer ID and
+notarized by Apple, so there is no Gatekeeper detour on first launch.
 
 ## Current prototype
 
@@ -73,12 +70,32 @@ xcodegen generate
 xcodebuild -project Pickroom.xcodeproj -scheme Pickroom -configuration Debug build
 ```
 
-Create a universal, ad-hoc signed app and DMG without a paid Apple Developer
-account:
+Create a universal app and DMG:
 
 ```bash
-VERSION=0.1.0 scripts/bundle.sh
+VERSION=0.3.0 scripts/bundle.sh
 ```
+
+`bundle.sh` picks whichever signing tier the machine can do. With a "Developer
+ID Application" certificate in the keychain it signs with the hardened runtime
+and a secure timestamp, then notarizes the app and the DMG and staples both
+tickets. Without one it falls back to an ad-hoc signature, which runs locally
+but is refused by Gatekeeper after a download. `SIGN_ID=-` forces ad-hoc and
+`NOTARIZE=0` skips Apple's notary service.
+
+Cutting a release — tests, notarized DMG, tag, GitHub Release, and the
+Homebrew cask — is one command:
+
+```bash
+scripts/release.sh 0.3.0 --dry-run
+scripts/release.sh 0.3.0
+```
+
+Apple's notary queue can sit on a submission for hours. When it does, ship
+with `ALLOW_UNNOTARISED=1` and backfill the tickets afterwards by re-running
+`scripts/notarise-release.sh 0.3.0` until it stops telling you to come back;
+it replaces the published DMG, repoints the cask, and strips the Gatekeeper
+workaround from the release notes.
 
 The app icon is maintained as the Icon Composer project at
 `Pickroom/AppIcon.icon`.
