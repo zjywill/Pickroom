@@ -177,7 +177,7 @@ struct PhotoCanvas: View {
             }
         }
         .accessibilityLabel(asset.filename)
-        .accessibilityValue("\(asset.decision.title), \(asset.rating) stars")
+        .accessibilityValue(asset.decision.title)
         .accessibilityHint("Pinch or double-click to inspect focus")
     }
 

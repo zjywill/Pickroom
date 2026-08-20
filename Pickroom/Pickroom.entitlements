@@ -18,6 +18,12 @@
 	<key>com.apple.security.files.bookmarks.app-scope</key>
 	<true/>
 
+	<!-- Map tiles, place search, and reverse geocoding for the location
+	     picker. The sandbox blocks outbound connections without it, and the
+	     map comes up blank rather than erroring. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+
 	<!-- The photo library. Required twice over: by the sandbox, and by the
 	     hardened runtime, which denies it silently — no permission prompt,
 	     no row in System Settings, nothing for tccutil to reset. -->

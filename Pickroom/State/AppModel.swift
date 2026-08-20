@@ -27,10 +27,16 @@ final class AppModel {
     var fileOperationError: String?
     var isManagingRejects = false
     var isShowingTrashConfirmation = false
+    /// Extra photos the contact sheet has picked out. Empty means operations
+    /// act on the current photo alone.
+    var selectedAssetIDs: Set<UUID> = []
+    var isChoosingLocation = false
+    private(set) var isTaggingLocation = false
 
     private let scanner: PhotoLibraryScanner
     private let selectionStore: SelectionStore
     private let rejectedPhotoManager: RejectedPhotoManager
+    private let locationTagger = LocationTagger()
     private let folderAccess: FolderAccess
     private var storedSelections: [String: StoredSelection] = [:]
     private var selectionSaveTask: Task<Void, Never>?
@@ -217,7 +223,6 @@ final class AppModel {
         for index in scanned.indices {
             if let stored = storedSelections[scanned[index].selectionKey] {
                 scanned[index].decision = stored.decision
-                scanned[index].rating = stored.rating
             }
         }
 
@@ -286,7 +291,6 @@ final class AppModel {
         for index in fetched.indices {
             if let stored = storedSelections[fetched[index].selectionKey] {
                 fetched[index].decision = stored.decision
-                fetched[index].rating = stored.rating
             }
         }
 
@@ -429,6 +433,7 @@ final class AppModel {
     }
 
     func select(_ asset: PhotoAsset) {
+        selectedAssetIDs.removeAll()
         guard !isLoading else { return }
         currentAssetID = asset.id
     }
@@ -474,17 +479,92 @@ final class AppModel {
         }
     }
 
-    func setRating(_ rating: Int) {
+    // MARK: - Location
+
+    /// Scopes worth offering for the photo in hand, widest last. `.selection`
+    /// is absent unless the contact sheet actually has one, and `.filtered`
+    /// is absent when it would mean the same thing as a narrower scope.
+    var availableLocationScopes: [LocationScope] {
+        var scopes: [LocationScope] = [.current]
+        if selectedAssetIDs.count > 1 {
+            scopes.append(.selection)
+        }
+        if filteredAssets.count > max(selectedAssetIDs.count, 1) {
+            scopes.append(.filtered)
+        }
+        return scopes
+    }
+
+    func assets(for scope: LocationScope) -> [PhotoAsset] {
+        switch scope {
+        case .current:
+            currentAsset.map { [$0] } ?? []
+        case .selection:
+            assets.filter { selectedAssetIDs.contains($0.id) }
+        case .filtered:
+            filteredAssets
+        }
+    }
+
+    /// True when at least one photo in the scope can hold a location, so the
+    /// picker is not offered for a selection of nothing but SVGs.
+    func canTagLocation(for scope: LocationScope) -> Bool {
+        assets(for: scope).contains(where: PhotoLocationWriter.canWrite)
+    }
+
+    func beginChoosingLocation() {
+        guard !isLoading, !isTaggingLocation, currentAsset != nil else { return }
+        isChoosingLocation = true
+    }
+
+    func applyLocation(_ location: PhotoLocation, scope: LocationScope) async {
+        guard !isTaggingLocation else { return }
+
+        let targets = assets(for: scope)
+        guard !targets.isEmpty else { return }
+
+        isTaggingLocation = true
+        let result = await locationTagger.apply(location, to: targets)
+        isTaggingLocation = false
+
+        let tagged = Set(result.taggedAssetIDs)
+        for index in assets.indices where tagged.contains(assets[index].id) {
+            assets[index].metadata.location = location
+        }
+
+        presentFailures(result.failures, action: "tag")
+    }
+
+    // MARK: - Contact sheet selection
+
+    func toggleSelection(_ asset: PhotoAsset) {
+        if selectedAssetIDs.contains(asset.id) {
+            selectedAssetIDs.remove(asset.id)
+        } else {
+            selectedAssetIDs.insert(asset.id)
+            currentAssetID = asset.id
+        }
+    }
+
+    /// Selects everything between the current photo and `asset`, the way a
+    /// shift-click reads in any list.
+    func extendSelection(through asset: PhotoAsset) {
+        let visible = filteredAssets
         guard
-            !isLoading,
-            let currentAssetID,
-            let index = assets.firstIndex(where: { $0.id == currentAssetID })
+            let anchorIndex = visible.firstIndex(where: { $0.id == currentAssetID })
+                ?? visible.indices.first,
+            let targetIndex = visible.firstIndex(where: { $0.id == asset.id })
         else {
             return
         }
 
-        assets[index].rating = min(max(rating, 0), 5)
-        persistSelection(for: assets[index])
+        let range = min(anchorIndex, targetIndex)...max(anchorIndex, targetIndex)
+        selectedAssetIDs.formUnion(visible[range].map(\.id))
+        currentAssetID = asset.id
+    }
+
+    func clearSelection() {
+        selectedAssetIDs.removeAll()
     }
 
     private func restoreCollectedPhotos(assetIDs: Set<UUID>?) async {
@@ -649,10 +729,7 @@ final class AppModel {
     }
 
     private func persistSelection(for asset: PhotoAsset) {
-        storedSelections[asset.selectionKey] = StoredSelection(
-            decision: asset.decision,
-            rating: asset.rating
-        )
+        storedSelections[asset.selectionKey] = StoredSelection(decision: asset.decision)
         let snapshot = storedSelections
         let pendingSave = selectionSaveTask
         selectionSaveTask = Task {
@@ -670,10 +747,7 @@ final class AppModel {
             }
 
             let asset = assets[index]
-            let selection = storedSelections[asset.selectionKey] ?? StoredSelection(
-                decision: asset.decision,
-                rating: asset.rating
-            )
+            let selection = storedSelections[asset.selectionKey] ?? StoredSelection(decision: asset.decision)
 
             selectionMoves.append(
                 StoredSelectionKeyMove(
@@ -699,10 +773,7 @@ final class AppModel {
         for asset in candidates {
             guard let primaryURL = asset.fileURL else { continue }
             let primaryKey = asset.selectionKey
-            let selection = storedSelections[primaryKey] ?? StoredSelection(
-                decision: asset.decision,
-                rating: asset.rating
-            )
+            let selection = storedSelections[primaryKey] ?? StoredSelection(decision: asset.decision)
             let primaryExists = FileManager.default.fileExists(atPath: primaryURL.path)
             let companionExists = asset.companionURL.map {
                 FileManager.default.fileExists(atPath: $0.path)
@@ -725,7 +796,6 @@ final class AppModel {
         for index in scanned.indices {
             if let stored = storedSelections[scanned[index].selectionKey] {
                 scanned[index].decision = stored.decision
-                scanned[index].rating = stored.rating
             }
         }
 
@@ -747,7 +817,7 @@ final class AppModel {
         await selectionStore.save(storedSelections)
     }
 
-    private func presentFailures(_ failures: [RejectOperationFailure], action: String) {
+    private func presentFailures(_ failures: [FileOperationFailure], action: String) {
         guard !failures.isEmpty else { return }
 
         let details = failures.prefix(3).map {

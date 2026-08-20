@@ -67,13 +67,11 @@ struct PickroomCommands: Commands {
 
             Divider()
 
-            ForEach(0...5, id: \.self) { rating in
-                Button(rating == 0 ? "Clear Rating" : "\(rating) Star\(rating == 1 ? "" : "s")") {
-                    model.setRating(rating)
-                }
-                .keyboardShortcut(KeyEquivalent(Character(String(rating))), modifiers: [])
-                .disabled(model.currentAsset == nil || model.isLoading)
+            Button("Set Location…") {
+                model.beginChoosingLocation()
             }
+            .keyboardShortcut("l", modifiers: .command)
+            .disabled(model.currentAsset == nil || model.isLoading || model.isTaggingLocation)
         }
 
         CommandMenu("Inspect") {

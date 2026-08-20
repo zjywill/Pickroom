@@ -42,6 +42,18 @@ enum MetadataReader {
             } else {
                 metadata.iso = number(exif?[kCGImagePropertyExifISOSpeed])?.intValue
             }
+
+            metadata.location = PhotoLocationWriter.location(
+                fromGPS: properties[kCGImagePropertyGPSDictionary] as? [CFString: Any]
+            )
+        }
+
+        // For RAW the sidecar outranks the file: coordinates in the file are
+        // whatever the camera recorded, coordinates in the sidecar are what
+        // someone decided.
+        if case .sidecar = try? PhotoLocationWriter.target(for: url),
+           let sidecar = LocationSidecar.read(for: url) {
+            metadata.location = sidecar
         }
 
         if SVGSupport.isSVG(url) {

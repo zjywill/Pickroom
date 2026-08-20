@@ -6,7 +6,6 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
     var filename: String
     var companionURL: URL?
     var decision: PhotoDecision
-    var rating: Int
     var metadata: PhotoMetadata
     var isArchived: Bool
     /// Set once the user downloads a Photos original; the file pipeline then
@@ -19,7 +18,6 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
         filename: String? = nil,
         companionURL: URL? = nil,
         decision: PhotoDecision = .unreviewed,
-        rating: Int = 0,
         metadata: PhotoMetadata,
         isArchived: Bool = false,
         downloadedOriginalURL: URL? = nil
@@ -31,7 +29,6 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
             ?? source.storageKey
         self.companionURL = companionURL
         self.decision = decision
-        self.rating = rating
         self.metadata = metadata
         self.isArchived = isArchived
         self.downloadedOriginalURL = downloadedOriginalURL
@@ -42,7 +39,6 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
         url: URL,
         companionURL: URL? = nil,
         decision: PhotoDecision = .unreviewed,
-        rating: Int = 0,
         metadata: PhotoMetadata,
         isArchived: Bool = false
     ) {
@@ -52,7 +48,6 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
             filename: url.lastPathComponent,
             companionURL: companionURL,
             decision: decision,
-            rating: rating,
             metadata: metadata,
             isArchived: isArchived
         )
@@ -91,5 +86,4 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
 
 struct StoredSelection: Codable, Hashable, Sendable {
     var decision: PhotoDecision
-    var rating: Int
 }

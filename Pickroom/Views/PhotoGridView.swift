@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct PhotoGridView: View {
@@ -13,9 +14,21 @@ struct PhotoGridView: View {
                 ForEach(model.filteredAssets) { asset in
                     PhotoGridTile(
                         asset: asset,
-                        isSelected: asset.id == model.currentAssetID
+                        isSelected: model.selectedAssetIDs.contains(asset.id)
+                            || asset.id == model.currentAssetID
                     ) {
-                        model.select(asset)
+                        // SwiftUI hands a Button action no modifier flags, and
+                        // reading them off the current event is what lets one
+                        // location cover a whole shoot: ⌘-click to add, ⇧-click
+                        // for a run, plain click to start over.
+                        let modifiers = NSEvent.modifierFlags
+                        if modifiers.contains(.command) {
+                            model.toggleSelection(asset)
+                        } else if modifiers.contains(.shift) {
+                            model.extendSelection(through: asset)
+                        } else {
+                            model.select(asset)
+                        }
                     } open: {
                         model.select(asset)
                         model.workspaceMode = .cull
@@ -84,32 +97,23 @@ private struct PhotoGridTile: View {
                         )
                 }
 
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(asset.filename)
-                            .font(.caption.weight(.semibold))
-                            .lineLimit(1)
-                            .truncationMode(.middle)
-
-                        Text([
-                            asset.metadata.shutterDisplay,
-                            asset.metadata.apertureDisplay,
-                            asset.metadata.isoDisplay
-                        ].joined(separator: "  "))
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(asset.filename)
+                        .font(.caption.weight(.semibold))
                         .lineLimit(1)
-                    }
+                        .truncationMode(.middle)
 
-                    Spacer(minLength: 4)
-
-                    if asset.rating > 0 {
-                        Label("\(asset.rating)", systemImage: "star.fill")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.yellow)
-                    }
+                    Text([
+                        asset.metadata.shutterDisplay,
+                        asset.metadata.apertureDisplay,
+                        asset.metadata.isoDisplay
+                    ].joined(separator: "  "))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                    .lineLimit(1)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .contentShape(Rectangle())
         }
@@ -146,7 +150,7 @@ private struct PhotoGridTile: View {
             )
         }
         .accessibilityLabel(asset.filename)
-        .accessibilityValue("\(asset.decision.title), \(asset.rating) stars")
+        .accessibilityValue(asset.decision.title)
         .accessibilityHint("Double-click to open culling view")
     }
 }

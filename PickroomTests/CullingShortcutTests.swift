@@ -15,10 +15,9 @@ final class CullingShortcutTests: XCTestCase {
         XCTAssertEqual(CullingShortcut.command(key: "c"), .toggleCompositionGrid)
     }
 
-    func testMapsRatingKeys() {
-        XCTAssertEqual(CullingShortcut.command(key: "0"), .rating(0))
-        XCTAssertEqual(CullingShortcut.command(key: "5"), .rating(5))
-        XCTAssertNil(CullingShortcut.command(key: "6"))
+    func testIgnoresDigitKeys() {
+        XCTAssertNil(CullingShortcut.command(key: "0"))
+        XCTAssertNil(CullingShortcut.command(key: "5"))
     }
 
     func testIgnoresModifiedKeys() {

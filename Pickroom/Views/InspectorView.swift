@@ -13,7 +13,6 @@ struct InspectorView: View {
 
                         InspectorSection("Review") {
                             DecisionPicker()
-                            RatingPicker(rating: asset.rating)
                         }
 
                         InspectorSection("Capture") {
@@ -26,6 +25,11 @@ struct InspectorView: View {
                         InspectorSection("Camera") {
                             MetadataRow("Body", value: asset.metadata.cameraDisplay)
                             MetadataRow("Lens", value: asset.metadata.lensDisplay)
+                        }
+
+                        InspectorSection("Location") {
+                            MetadataRow("Place", value: asset.metadata.locationDisplay)
+                            LocationButton(asset: asset)
                         }
 
                         InspectorSection("Image") {
@@ -143,6 +147,47 @@ private struct InspectorSection<Content: View>: View {
     }
 }
 
+/// Opens the map, or explains why it cannot be opened for this photo.
+///
+/// Both refusals are worth spelling out. A Photos library picture is not a
+/// file Pickroom can write beside, and an SVG has nowhere to put coordinates
+/// — neither is a bug, and a greyed-out button with no reason reads like one.
+private struct LocationButton: View {
+    @Environment(AppModel.self) private var model
+    let asset: PhotoAsset
+
+    private var refusal: String? {
+        guard asset.fileURL == nil else {
+            return (try? PhotoLocationWriter.target(for: asset)) == nil
+                ? "\(asset.metadata.fileExtension) files have nowhere to store a location."
+                : nil
+        }
+        return "Photos library pictures keep the location your camera recorded."
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                model.beginChoosingLocation()
+            } label: {
+                Label(
+                    asset.metadata.location == nil ? "Set Location…" : "Change Location…",
+                    systemImage: "mappin.and.ellipse"
+                )
+            }
+            .disabled(refusal != nil || model.isLoading || model.isTaggingLocation)
+
+            if let refusal {
+                Text(refusal)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct DecisionPicker: View {
     @Environment(AppModel.self) private var model
 
@@ -159,81 +204,6 @@ private struct DecisionPicker: View {
         .pickerStyle(.menu)
         .labelsHidden()
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
-
-private struct RatingPicker: View {
-    @Environment(AppModel.self) private var model
-    let rating: Int
-
-    var body: some View {
-        RatingLevelIndicator(
-            rating: Binding(
-                get: { model.currentAsset?.rating ?? rating },
-                set: { model.setRating($0) }
-            )
-        )
-        .frame(height: 32)
-        .fixedSize(horizontal: true, vertical: false)
-        .help("Drag to set a rating from zero to five stars")
-    }
-}
-
-private struct RatingLevelIndicator: NSViewRepresentable {
-    @Binding var rating: Int
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    func makeNSView(context: Context) -> NSLevelIndicator {
-        let indicator = NSLevelIndicator()
-        indicator.levelIndicatorStyle = .rating
-        indicator.minValue = 0
-        indicator.maxValue = 5
-        indicator.doubleValue = Double(rating)
-        indicator.isEditable = true
-        indicator.isContinuous = true
-        indicator.placeholderVisibility = .always
-        indicator.fillColor = .systemYellow
-        let symbolConfiguration = NSImage.SymbolConfiguration(
-            pointSize: 19,
-            weight: .regular
-        )
-        indicator.ratingImage = NSImage(
-            systemSymbolName: "star.fill",
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(symbolConfiguration)
-        indicator.ratingPlaceholderImage = NSImage(
-            systemSymbolName: "star",
-            accessibilityDescription: nil
-        )?.withSymbolConfiguration(symbolConfiguration)
-        indicator.target = context.coordinator
-        indicator.action = #selector(Coordinator.ratingChanged(_:))
-        indicator.setAccessibilityLabel("Photo rating")
-        return indicator
-    }
-
-    func updateNSView(_ indicator: NSLevelIndicator, context: Context) {
-        context.coordinator.parent = self
-        let newValue = Double(rating)
-        if indicator.doubleValue != newValue {
-            indicator.doubleValue = newValue
-        }
-    }
-
-    @MainActor
-    final class Coordinator: NSObject {
-        var parent: RatingLevelIndicator
-
-        init(_ parent: RatingLevelIndicator) {
-            self.parent = parent
-        }
-
-        @objc
-        func ratingChanged(_ sender: NSLevelIndicator) {
-            parent.rating = min(max(Int(sender.doubleValue.rounded()), 0), 5)
-        }
     }
 }
 

@@ -190,6 +190,15 @@ struct RootView: View {
         } message: {
             Text(model.trashConfirmationMessage)
         }
+        .sheet(
+            isPresented: Binding(
+                get: { model.isChoosingLocation },
+                set: { model.isChoosingLocation = $0 }
+            )
+        ) {
+            LocationPickerView()
+                .environment(model)
+        }
     }
 }
 

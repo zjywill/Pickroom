@@ -150,10 +150,10 @@ final class RejectedPhotoManagerTests: XCTestCase {
         XCTAssertFalse(assets.contains { $0.filename == "hidden.jpg" })
     }
 
-    func testSelectionMigrationMovesDecisionAndRatingToNewPath() {
+    func testSelectionMigrationMovesDecisionToNewPath() {
         let oldKey = "/photos/DSC0004.arw"
         let newKey = "/photos/.pickroom-rejects/DSC0004.arw"
-        let selection = StoredSelection(decision: .reject, rating: 4)
+        let selection = StoredSelection(decision: .reject)
 
         let migrated = StoredSelectionKeyMigration.applying(
             [
@@ -299,7 +299,6 @@ final class RejectedPhotoManagerTests: XCTestCase {
             url: url,
             companionURL: companionURL,
             decision: .reject,
-            rating: 3,
             metadata: .placeholder(
                 for: url,
                 isRaw: PhotoLibraryScanner.isRaw(url)

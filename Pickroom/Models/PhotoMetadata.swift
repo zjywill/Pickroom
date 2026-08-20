@@ -11,6 +11,9 @@ struct PhotoMetadata: Codable, Hashable, Sendable {
     var exposureTime: Double?
     var iso: Int?
     var capturedAt: String?
+    /// Where the photo was taken, or where the user said it was taken.
+    /// RAW straight out of a camera almost never has one.
+    var location: PhotoLocation? = nil
     var fileSize: Int64?
     var fileExtension: String
     var isRaw: Bool
@@ -96,6 +99,10 @@ struct PhotoMetadata: Codable, Hashable, Sendable {
     var lensDisplay: String {
         guard let lensModel, !lensModel.isEmpty else { return "Unknown lens" }
         return lensModel
+    }
+
+    var locationDisplay: String {
+        location?.display ?? "—"
     }
 
     var fileSizeDisplay: String {

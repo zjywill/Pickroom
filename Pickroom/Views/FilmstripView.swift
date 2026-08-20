@@ -88,7 +88,7 @@ private struct FilmstripThumbnail: View {
         .buttonStyle(.plain)
         .help(asset.filename)
         .accessibilityLabel(asset.filename)
-        .accessibilityValue("\(asset.decision.title), \(asset.rating) stars")
+        .accessibilityValue(asset.decision.title)
         .task(id: asset.previewSource) {
             model.resolveDetailsIfNeeded(for: asset)
             preview = await PreviewPipeline.shared.image(

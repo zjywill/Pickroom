@@ -16,19 +16,21 @@ struct PhotoRelocation: Hashable, Sendable {
     let destinationCompanionURL: URL?
 }
 
-struct RejectOperationFailure: Hashable, Sendable {
+/// One file an operation could not finish, named so the user can go look
+/// at it. Reject moves and location writes both report through this.
+struct FileOperationFailure: Hashable, Sendable {
     let filename: String
     let reason: String
 }
 
 struct RejectRelocationResult: Sendable {
     var relocations: [PhotoRelocation] = []
-    var failures: [RejectOperationFailure] = []
+    var failures: [FileOperationFailure] = []
 }
 
 struct RejectTrashResult: Sendable {
     var completedAssetIDs: [UUID] = []
-    var failures: [RejectOperationFailure] = []
+    var failures: [FileOperationFailure] = []
 }
 
 protocol TrashMoving: Sendable {
@@ -78,7 +80,7 @@ actor RejectedPhotoManager {
         for asset in assets {
             guard let primaryURL = asset.fileURL else {
                 result.failures.append(
-                    RejectOperationFailure(
+                    FileOperationFailure(
                         filename: asset.filename,
                         reason: RejectFileError.notAFileAsset.localizedDescription
                     )
@@ -92,7 +94,7 @@ actor RejectedPhotoManager {
                 result.completedAssetIDs.append(asset.id)
             } catch {
                 result.failures.append(
-                    RejectOperationFailure(
+                    FileOperationFailure(
                         filename: asset.filename,
                         reason: error.localizedDescription
                     )
@@ -138,7 +140,7 @@ actor RejectedPhotoManager {
                 )
             } catch {
                 result.failures.append(
-                    RejectOperationFailure(
+                    FileOperationFailure(
                         filename: asset.filename,
                         reason: error.localizedDescription
                     )

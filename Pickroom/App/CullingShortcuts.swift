@@ -5,7 +5,6 @@ import SwiftUI
 enum CullingShortcut: Equatable, Sendable {
     case decision(PhotoDecision)
     case unmark
-    case rating(Int)
     case actualSize
     case toggleActualSize
     case toggleCompositionGrid
@@ -28,9 +27,7 @@ enum CullingShortcut: Equatable, Sendable {
         case "c": return .toggleCompositionGrid
         case "z": return .actualSize
         case " ": return .toggleActualSize
-        default:
-            guard let rating = Int(key), (0...5).contains(rating) else { return nil }
-            return .rating(rating)
+        default: return nil
         }
     }
 
@@ -39,7 +36,6 @@ enum CullingShortcut: Equatable, Sendable {
         switch self {
         case .decision(let decision): model.setDecision(decision)
         case .unmark: model.setDecision(.unreviewed, advance: false)
-        case .rating(let rating): model.setRating(rating)
         case .actualSize: model.zoomToActualSize()
         case .toggleActualSize: model.toggleActualSize()
         case .toggleCompositionGrid: model.toggleCompositionGrid()

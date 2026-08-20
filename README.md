@@ -37,7 +37,6 @@ notarized by Apple, so there is no Gatekeeper detour on first launch.
   albums, and All Photos, including iCloud photos.
 - Pair RAW and JPEG files that share a filename stem.
 - Cull with `P` (pick), `M` (maybe), `X` (reject), and `U` (unmark).
-- Rate by dragging across the stars or with the number keys `0` through `5`.
 - Navigate with the left and right arrow keys.
 - Pinch on a trackpad to zoom, then drag to inspect focus across the frame.
 - Mouse users can zoom from the toolbar or double-click between fit and 200%.
@@ -45,14 +44,47 @@ notarized by Apple, so there is no Gatekeeper detour on first launch.
 - Press `Space` to switch between fit to window and 100% pixels.
 - Inspect composition with the thirds grid (`C`).
 - Switch between culling and contact sheet views with `Command-1` and `Command-2`.
+- Give photos a location on a map (`Command-L`), one at a time or a whole
+  shoot at once.
 - Move current rejects and paired files to macOS Trash after one explicit confirmation.
   In the photo library, rejects go to Recently Deleted instead, and Photos asks
   for its own confirmation.
 - Persist decisions locally without modifying files during normal culling.
 
+### Locations for photos that have none
+
+RAW out of a camera without a GPS module has no coordinates at all, so
+`Command-L` opens a map: search for the venue or click the spot. In the contact
+sheet, ⌘-click and ⇧-click pick out several photos first, and the picker can
+apply one location to the selection or to everything currently in view.
+
+Where the coordinates land depends on what the format can hold, and on what
+other software will actually read:
+
+| Format | Written to |
+| --- | --- |
+| CR2, CR3, NEF, ARW, RAF, and other proprietary RAW | an `.xmp` sidecar beside the file |
+| JPEG, HEIC, TIFF, PNG, DNG | the file itself, as EXIF GPS |
+| Photos library pictures | not supported |
+
+Proprietary RAW cannot be rewritten safely, which is why every RAW editor uses
+a sidecar. DNG is raw but Adobe treats it as writable and ignores a sidecar
+next to one, so it is written in place along with the ordinary formats. Writing
+in place replaces the metadata block and copies the original compressed data
+across untouched, so tagging a JPEG twice costs it nothing.
+
+An existing sidecar is edited rather than replaced — develop settings and
+keywords from Lightroom or Capture One survive. A RAW and its paired JPEG both
+get the coordinates, since they are one photograph.
+
+Lightroom reads a sidecar when it imports the photo. If the photo is already in
+its catalogue, `Metadata → Read Metadata from File` is what picks the location
+up, so culling in Pickroom before importing is the smoother order.
+
 ### iCloud photos stay in iCloud
 
-Browsing the photo library never downloads anything. Previews come from the
+Browsing the photo library never downloads anything. (The map is the one part
+of Pickroom that goes online, and only while it is open.) Previews come from the
 renders Photos already keeps on this Mac, so grids, filmstrips, fit-to-window,
 and pick/reject decisions all work offline.
 
