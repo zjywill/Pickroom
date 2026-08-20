@@ -6,13 +6,13 @@
     {
       "layers" : [
         {
-          "image-name" : "Aug 2, 2026, 12_22_17 PM.png",
-          "name" : "Aug 2, 2026, 12_22_17 PM",
+          "image-name" : "photo-frame-face-app-icon.png",
+          "name" : "photo-frame-face-app-icon",
           "position" : {
-            "scale" : 1.12,
+            "scale" : 0.9,
             "translation-in-points" : [
-              -22,
-              -8.53006084718345
+              0,
+              0
             ]
           }
         }
