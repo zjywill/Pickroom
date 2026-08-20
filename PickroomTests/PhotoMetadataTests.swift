@@ -121,7 +121,7 @@ final class PhotoMetadataTests: XCTestCase {
             """.utf8
         ).write(to: url)
 
-        let loaded = await PreviewPipeline.shared.image(for: url, maxPixelSize: 640)
+        let loaded = await PreviewPipeline.shared.image(for: .file(url), maxPixelSize: 640)
         let preview = try XCTUnwrap(loaded)
 
         XCTAssertEqual(preview.cgImage.width, 640)

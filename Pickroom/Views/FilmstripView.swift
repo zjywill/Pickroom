@@ -32,6 +32,8 @@ struct FilmstripView: View {
 }
 
 private struct FilmstripThumbnail: View {
+    @Environment(AppModel.self) private var model
+
     let asset: PhotoAsset
     let isSelected: Bool
     let action: () -> Void
@@ -87,9 +89,10 @@ private struct FilmstripThumbnail: View {
         .help(asset.filename)
         .accessibilityLabel(asset.filename)
         .accessibilityValue("\(asset.decision.title), \(asset.rating) stars")
-        .task(id: asset.url) {
+        .task(id: asset.previewSource) {
+            model.resolveDetailsIfNeeded(for: asset)
             preview = await PreviewPipeline.shared.image(
-                for: asset.url,
+                for: asset.previewSource,
                 maxPixelSize: 260,
                 priority: .background
             )

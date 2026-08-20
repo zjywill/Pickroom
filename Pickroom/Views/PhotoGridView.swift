@@ -137,9 +137,10 @@ private struct PhotoGridTile: View {
                 model.setDecision(.unreviewed, advance: false)
             }
         }
-        .task(id: asset.url) {
+        .task(id: asset.previewSource) {
+            model.resolveDetailsIfNeeded(for: asset)
             preview = await PreviewPipeline.shared.image(
-                for: asset.url,
+                for: asset.previewSource,
                 maxPixelSize: 720,
                 priority: .background
             )

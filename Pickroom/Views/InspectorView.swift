@@ -87,6 +87,13 @@ private struct InspectorHeader: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                if asset.needsOriginalDownload {
+                    Label("iCloud", systemImage: "icloud")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .help("The original is not on this Mac yet.")
+                }
             }
 
             Text(asset.filename)
@@ -94,7 +101,7 @@ private struct InspectorHeader: View {
                 .lineLimit(2)
                 .truncationMode(.middle)
 
-            Text(asset.url.deletingLastPathComponent().path)
+            Text(locationDescription)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -104,6 +111,15 @@ private struct InspectorHeader: View {
                 .font(.caption2.weight(.medium))
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var locationDescription: String {
+        if let url = asset.fileURL {
+            return url.deletingLastPathComponent().path
+        }
+        return asset.downloadedOriginalURL == nil
+            ? "Photos Library"
+            : "Photos Library · original downloaded"
     }
 }
 

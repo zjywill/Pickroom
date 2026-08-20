@@ -10,6 +10,12 @@ struct PickroomCommands: Commands {
             }
             .keyboardShortcut("o", modifiers: .command)
             .disabled(model.isLoading)
+
+            Button("Open Photos Library") {
+                Task { await model.openPhotosLibrary() }
+            }
+            .keyboardShortcut("o", modifiers: [.command, .shift])
+            .disabled(model.isLoading)
         }
 
         CommandMenu("Photo") {
@@ -50,6 +56,14 @@ struct PickroomCommands: Commands {
             }
             .keyboardShortcut("u", modifiers: [])
             .disabled(model.currentAsset == nil || model.isLoading)
+
+            Divider()
+
+            Button("Download Original from iCloud") {
+                Task { await model.downloadCurrentOriginal() }
+            }
+            .keyboardShortcut("d", modifiers: .command)
+            .disabled(!model.currentAssetNeedsDownload || model.isDownloadingOriginal || model.isLoading)
 
             Divider()
 

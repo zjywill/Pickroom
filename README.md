@@ -36,6 +36,8 @@ xattr -dr com.apple.quarantine /Applications/Pickroom.app
 ## Current prototype
 
 - Open or drag in a folder containing RAW, HEIC, TIFF, JPEG, PNG, or SVG files.
+- Or open the system photo library (`Shift-Command-O`) and cull albums, smart
+  albums, and All Photos, including iCloud photos.
 - Pair RAW and JPEG files that share a filename stem.
 - Cull with `P` (pick), `M` (maybe), `X` (reject), and `U` (unmark).
 - Rate by dragging across the stars or with the number keys `0` through `5`.
@@ -47,7 +49,22 @@ xattr -dr com.apple.quarantine /Applications/Pickroom.app
 - Inspect composition with the thirds grid (`C`).
 - Switch between culling and contact sheet views with `Command-1` and `Command-2`.
 - Move current rejects and paired files to macOS Trash after one explicit confirmation.
+  In the photo library, rejects go to Recently Deleted instead, and Photos asks
+  for its own confirmation.
 - Persist decisions locally without modifying files during normal culling.
+
+### iCloud photos stay in iCloud
+
+Browsing the photo library never downloads anything. Previews come from the
+renders Photos already keeps on this Mac, so grids, filmstrips, fit-to-window,
+and pick/reject decisions all work offline.
+
+An iCloud-only photo cannot be inspected at 1:1 and has no capture settings
+until its original is on this Mac, so Pickroom shows a badge and waits. Press
+`Command-D` — or use the toolbar button — to download that one original. Nothing
+is prefetched, batched, or downloaded in the background. Downloads land in
+`~/Library/Caches/Pickroom/Originals` and are decoded by the normal ImageIO and
+LibRaw pipeline.
 
 ## Build
 

@@ -28,13 +28,21 @@ struct CaptureStrip: View {
 
             Spacer(minLength: 12)
 
-            VStack(alignment: .trailing, spacing: 2) {
-                Text(asset.metadata.cameraDisplay)
-                    .font(.caption.weight(.medium))
-                Text(asset.metadata.lensDisplay)
-                    .font(.caption2)
+            if asset.metadata.requiresOriginalForDetails {
+                Label("Capture settings need the original (⌘D)", systemImage: "icloud")
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .truncationMode(.tail)
+            } else {
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(asset.metadata.cameraDisplay)
+                        .font(.caption.weight(.medium))
+                    Text(asset.metadata.lensDisplay)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
         }
         .padding(.horizontal, 16)

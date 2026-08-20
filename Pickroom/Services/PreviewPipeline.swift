@@ -6,6 +6,9 @@ import RawEngine
 
 struct PreviewImage: @unchecked Sendable {
     let cgImage: CGImage
+    /// True when this is the largest copy stored on this Mac and a sharper
+    /// original still lives in iCloud.
+    var isLocalStandIn = false
 }
 
 enum PreviewPriority {
@@ -19,6 +22,7 @@ final class PreviewPipeline: @unchecked Sendable {
     private let cache = NSCache<NSString, CGImage>()
     private let cacheLock = NSLock()
     private var cachedSizes: [String: Set<Int>] = [:]
+    private var standInKeys: Set<String> = []
     private let context = CIContext(options: [
         .cacheIntermediates: false,
         .priorityRequestLow: false
@@ -41,8 +45,8 @@ final class PreviewPipeline: @unchecked Sendable {
         cache.totalCostLimit = 512 * 1_024 * 1_024
     }
 
-    func cachedImage(for url: URL) -> PreviewImage? {
-        let path = url.standardizedFileURL.path
+    func cachedImage(for source: AssetSource) -> PreviewImage? {
+        let path = source.storageKey
         cacheLock.lock()
         let sizes = cachedSizes[path]?.sorted(by: >) ?? []
         cacheLock.unlock()
@@ -50,23 +54,66 @@ final class PreviewPipeline: @unchecked Sendable {
         for size in sizes {
             let key = cacheKey(path: path, maxPixelSize: size)
             if let image = cache.object(forKey: key as NSString) {
-                return PreviewImage(cgImage: image)
+                return PreviewImage(cgImage: image, isLocalStandIn: isStandIn(key))
             }
         }
         return nil
     }
 
+    /// Loads a preview.
+    ///
+    /// Photos library assets never reach the network here: PhotoKit is asked
+    /// for the best render this Mac already holds. Downloading an original is
+    /// an explicit, separate user action.
     func image(
-        for url: URL,
+        for source: AssetSource,
         maxPixelSize: Int,
         priority: PreviewPriority = .foreground
     ) async -> PreviewImage? {
-        let path = url.standardizedFileURL.path
+        let path = source.storageKey
         let key = cacheKey(path: path, maxPixelSize: maxPixelSize)
         if let cached = cache.object(forKey: key as NSString) {
-            return PreviewImage(cgImage: cached)
+            return PreviewImage(cgImage: cached, isLocalStandIn: isStandIn(key))
         }
 
+        switch source {
+        case let .file(url):
+            return await fileImage(
+                url: url,
+                path: path,
+                key: key,
+                maxPixelSize: maxPixelSize,
+                priority: priority
+            )
+        case let .photoKit(localIdentifier):
+            guard let result = await PhotoKitLibrary.shared.image(
+                localIdentifier: localIdentifier,
+                maxPixelSize: maxPixelSize,
+                allowsNetworkAccess: false
+            ) else {
+                return nil
+            }
+
+            store(
+                result.cgImage,
+                path: path,
+                maxPixelSize: maxPixelSize,
+                isLocalStandIn: result.isLocalStandIn
+            )
+            return PreviewImage(
+                cgImage: result.cgImage,
+                isLocalStandIn: result.isLocalStandIn
+            )
+        }
+    }
+
+    private func fileImage(
+        url: URL,
+        path: String,
+        key: String,
+        maxPixelSize: Int,
+        priority: PreviewPriority
+    ) async -> PreviewImage? {
         let queue = priority == .foreground ? foregroundQueue : backgroundQueue
         let slots = priority == .foreground ? foregroundSlots : backgroundSlots
 
@@ -119,14 +166,30 @@ final class PreviewPipeline: @unchecked Sendable {
         return nil
     }
 
-    private func store(_ image: CGImage, path: String, maxPixelSize: Int) {
+    private func store(
+        _ image: CGImage,
+        path: String,
+        maxPixelSize: Int,
+        isLocalStandIn: Bool = false
+    ) {
         let key = cacheKey(path: path, maxPixelSize: maxPixelSize)
         let cost = image.bytesPerRow * image.height
         cache.setObject(image, forKey: key as NSString, cost: cost)
 
         cacheLock.lock()
         cachedSizes[path, default: []].insert(maxPixelSize)
+        if isLocalStandIn {
+            standInKeys.insert(key)
+        } else {
+            standInKeys.remove(key)
+        }
         cacheLock.unlock()
+    }
+
+    private func isStandIn(_ key: String) -> Bool {
+        cacheLock.lock()
+        defer { cacheLock.unlock() }
+        return standInKeys.contains(key)
     }
 
     private func cacheKey(path: String, maxPixelSize: Int) -> String {

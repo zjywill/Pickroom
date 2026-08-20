@@ -147,7 +147,7 @@ final class RejectedPhotoManagerTests: XCTestCase {
         XCTAssertEqual(assets.count, 2)
         XCTAssertEqual(assets.count(where: \.isArchived), 1)
         XCTAssertEqual(assets.first(where: \.isArchived)?.decision, .reject)
-        XCTAssertFalse(assets.contains { $0.url.lastPathComponent == "hidden.jpg" })
+        XCTAssertFalse(assets.contains { $0.filename == "hidden.jpg" })
     }
 
     func testSelectionMigrationMovesDecisionAndRatingToNewPath() {

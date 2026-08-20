@@ -22,21 +22,35 @@ struct EmptyLibraryView: View {
                 Text("Open a photo folder")
                     .font(.title2.weight(.semibold))
 
-                Text("Photos stay in place until you explicitly move rejects to Trash.")
+                Text("Photos stay in place until you explicitly move rejects to Trash. "
+                    + "Photos library browsing stays offline: iCloud originals download "
+                    + "only when you ask for one.")
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: 430)
             }
 
-            Button {
-                model.openFolder()
-            } label: {
-                Label("Open Photo Folder", systemImage: "folder.badge.plus")
-                    .frame(minWidth: 150)
+            HStack(spacing: 12) {
+                Button {
+                    model.openFolder()
+                } label: {
+                    Label("Open Photo Folder", systemImage: "folder.badge.plus")
+                        .frame(minWidth: 150)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+
+                Button {
+                    Task { await model.openPhotosLibrary() }
+                } label: {
+                    Label("Photos Library", systemImage: "photo.stack")
+                        .frame(minWidth: 130)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(model.isLoading)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
 
             Spacer()
         }

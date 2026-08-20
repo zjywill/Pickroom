@@ -2,12 +2,40 @@ import Foundation
 
 struct PhotoAsset: Identifiable, Hashable, Sendable {
     let id: UUID
-    var url: URL
+    var source: AssetSource
+    var filename: String
     var companionURL: URL?
     var decision: PhotoDecision
     var rating: Int
     var metadata: PhotoMetadata
     var isArchived: Bool
+    /// Set once the user downloads a Photos original; the file pipeline then
+    /// takes over for full resolution, RAW decoding, and EXIF.
+    var downloadedOriginalURL: URL?
+
+    init(
+        id: UUID = UUID(),
+        source: AssetSource,
+        filename: String? = nil,
+        companionURL: URL? = nil,
+        decision: PhotoDecision = .unreviewed,
+        rating: Int = 0,
+        metadata: PhotoMetadata,
+        isArchived: Bool = false,
+        downloadedOriginalURL: URL? = nil
+    ) {
+        self.id = id
+        self.source = source
+        self.filename = filename
+            ?? source.fileURL?.lastPathComponent
+            ?? source.storageKey
+        self.companionURL = companionURL
+        self.decision = decision
+        self.rating = rating
+        self.metadata = metadata
+        self.isArchived = isArchived
+        self.downloadedOriginalURL = downloadedOriginalURL
+    }
 
     init(
         id: UUID = UUID(),
@@ -18,21 +46,46 @@ struct PhotoAsset: Identifiable, Hashable, Sendable {
         metadata: PhotoMetadata,
         isArchived: Bool = false
     ) {
-        self.id = id
-        self.url = url
-        self.companionURL = companionURL
-        self.decision = decision
-        self.rating = rating
-        self.metadata = metadata
-        self.isArchived = isArchived
+        self.init(
+            id: id,
+            source: .file(url),
+            filename: url.lastPathComponent,
+            companionURL: companionURL,
+            decision: decision,
+            rating: rating,
+            metadata: metadata,
+            isArchived: isArchived
+        )
     }
 
-    var filename: String {
-        url.lastPathComponent
+    var fileURL: URL? {
+        source.fileURL
+    }
+
+    var isPhotoKitAsset: Bool {
+        source.isPhotoKit
+    }
+
+    /// The on-disk file backing this asset, if there is one. Photos assets only
+    /// have one after an explicit download.
+    var readableFileURL: URL? {
+        source.fileURL ?? downloadedOriginalURL
+    }
+
+    /// True when the original bytes are not on this Mac, so full resolution,
+    /// RAW decoding, and capture settings are unavailable until downloaded.
+    var needsOriginalDownload: Bool {
+        isPhotoKitAsset && downloadedOriginalURL == nil
     }
 
     var selectionKey: String {
-        url.standardizedFileURL.path
+        source.storageKey
+    }
+
+    /// Preview cache namespace. Downloading an original changes how the photo
+    /// decodes, so it deliberately changes the key too.
+    var previewSource: AssetSource {
+        downloadedOriginalURL.map { AssetSource.file($0) } ?? source
     }
 }
 

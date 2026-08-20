@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct RootView: View {
@@ -51,6 +52,23 @@ struct RootView: View {
                 }
 
                 ToolbarItemGroup(placement: .primaryAction) {
+                    if model.currentAssetNeedsDownload {
+                        Button {
+                            Task { await model.downloadCurrentOriginal() }
+                        } label: {
+                            if model.isDownloadingOriginal {
+                                ProgressView(value: model.downloadProgress)
+                                    .progressViewStyle(.circular)
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "arrow.down.circle")
+                            }
+                        }
+                        .disabled(model.isDownloadingOriginal)
+                        .accessibilityLabel("Download Original")
+                        .help("Download the original from iCloud for 1:1 focus and capture settings (⌘D)")
+                    }
+
                     Button {
                         model.toggleCompositionGrid()
                     } label: {
@@ -96,6 +114,10 @@ struct RootView: View {
                 }
             }
         }
+        // Hiding the toolbar material lets the sidebar and the canvas run all
+        // the way to the top of the window, so there is no separate toolbar
+        // band in a colour that drifts with whatever is behind the window.
+        .toolbarBackground(.hidden, for: .windowToolbar)
         .overlay {
             if model.isLoading {
                 LoadingOverlay()
@@ -108,12 +130,35 @@ struct RootView: View {
                 set: { if !$0 { model.loadError = nil } }
             )
         ) {
-            Button("Choose Another Folder") {
-                model.openFolder()
+            if !model.isPhotosSource {
+                Button("Choose Another Folder") {
+                    model.openFolder()
+                }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text(model.loadError ?? "")
+        }
+        .alert(
+            "Photo Library Unavailable",
+            isPresented: Binding(
+                get: { model.photoLibraryError != nil },
+                set: { if !$0 { model.photoLibraryError = nil } }
+            )
+        ) {
+            if model.photoAccess == .denied {
+                Button("Open Privacy Settings") {
+                    let url = URL(
+                        string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos"
+                    )
+                    if let url {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(model.photoLibraryError ?? "")
         }
         .alert(
             "Couldn’t Complete File Operation",
@@ -127,14 +172,17 @@ struct RootView: View {
             Text(model.fileOperationError ?? "")
         }
         .alert(
-            "Move Reject Files to Trash?",
+            model.trashConfirmationTitle,
             isPresented: Binding(
                 get: { model.isShowingTrashConfirmation },
                 set: { model.isShowingTrashConfirmation = $0 }
             )
         ) {
             Button("Cancel", role: .cancel) {}
-            Button("Move to Trash", role: .destructive) {
+            Button(
+                model.isPhotosSource ? "Delete Photos" : "Move to Trash",
+                role: .destructive
+            ) {
                 Task {
                     await model.moveRejectedPhotosToTrash()
                 }

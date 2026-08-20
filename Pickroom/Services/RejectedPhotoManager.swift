@@ -76,7 +76,16 @@ actor RejectedPhotoManager {
         var result = RejectTrashResult()
 
         for asset in assets {
-            let urls = [asset.url, asset.companionURL].compactMap { $0 }
+            guard let primaryURL = asset.fileURL else {
+                result.failures.append(
+                    RejectOperationFailure(
+                        filename: asset.filename,
+                        reason: RejectFileError.notAFileAsset.localizedDescription
+                    )
+                )
+                continue
+            }
+            let urls = [primaryURL, asset.companionURL].compactMap { $0 }
 
             do {
                 try await trashMover.moveToTrash(urls)
@@ -103,7 +112,10 @@ actor RejectedPhotoManager {
 
         for asset in assets {
             do {
-                let sourceURLs = [asset.url, asset.companionURL].compactMap { $0 }
+                guard let primaryURL = asset.fileURL else {
+                    throw RejectFileError.notAFileAsset
+                }
+                let sourceURLs = [primaryURL, asset.companionURL].compactMap { $0 }
                 let proposedURLs = try sourceURLs.map {
                     destinationRoot.appendingPathComponent(
                         try relativePath(of: $0, inside: sourceRoot)
@@ -116,7 +128,7 @@ actor RejectedPhotoManager {
                 result.relocations.append(
                     PhotoRelocation(
                         assetID: asset.id,
-                        sourceURL: asset.url,
+                        sourceURL: primaryURL,
                         destinationURL: destinationURLs[0],
                         sourceCompanionURL: asset.companionURL,
                         destinationCompanionURL: destinationURLs.count > 1
@@ -203,11 +215,14 @@ actor RejectedPhotoManager {
 }
 
 private enum RejectFileError: LocalizedError {
+    case notAFileAsset
     case outsideSourceFolder(URL)
     case rollbackFailed(paths: [String])
 
     var errorDescription: String? {
         switch self {
+        case .notAFileAsset:
+            "Photos library items are managed by Photos, not by moving files."
         case let .outsideSourceFolder(url):
             "“\(url.lastPathComponent)” is outside the selected source folder."
         case let .rollbackFailed(paths):

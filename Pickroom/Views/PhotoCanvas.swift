@@ -6,16 +6,16 @@ struct PhotoCanvas: View {
     let asset: PhotoAsset
 
     @State private var preview: PreviewImage?
-    @State private var previewURL: URL?
+    @State private var previewSource: AssetSource?
     @State private var panOffset: CGSize = .zero
     @GestureState private var dragOffset: CGSize = .zero
     @GestureState private var magnification = MagnificationState()
 
     var body: some View {
         GeometryReader { geometry in
-            let displayedPreview = previewURL == asset.url
+            let displayedPreview = previewSource == asset.previewSource
                 ? preview
-                : PreviewPipeline.shared.cachedImage(for: asset.url)
+                : PreviewPipeline.shared.cachedImage(for: asset.previewSource)
             let layoutSize = layoutImageSize(preview: displayedPreview)
             let imageRect = aspectFitRect(
                 imageSize: layoutSize,
@@ -77,7 +77,13 @@ struct PhotoCanvas: View {
                         Spacer()
                         DecisionBadge(decision: asset.decision)
                     }
+
                     Spacer()
+
+                    if asset.needsOriginalDownload,
+                       displayedPreview?.isLocalStandIn == true {
+                        CloudOriginalBanner(isZoomedIn: model.zoomScale > 1.001)
+                    }
                 }
                 .padding(18)
             }
@@ -126,13 +132,14 @@ struct PhotoCanvas: View {
                     )
                 }
             }
-            .onChange(of: asset.url, initial: true) { _, newURL in
-                if let cached = PreviewPipeline.shared.cachedImage(for: newURL) {
+            .onChange(of: asset.previewSource, initial: true) { _, newSource in
+                model.resolveDetailsIfNeeded(for: asset)
+                if let cached = PreviewPipeline.shared.cachedImage(for: newSource) {
                     preview = cached
-                    previewURL = newURL
+                    previewSource = newSource
                 } else {
                     preview = nil
-                    previewURL = nil
+                    previewSource = nil
                 }
             }
             .task(id: previewRequest(containerSize: geometry.size, preview: displayedPreview)) {
@@ -141,7 +148,7 @@ struct PhotoCanvas: View {
                     preview: displayedPreview
                 )
                 guard let loaded = await PreviewPipeline.shared.image(
-                    for: asset.url,
+                    for: asset.previewSource,
                     maxPixelSize: requestedSize,
                     priority: .foreground
                 ), !Task.isCancelled else {
@@ -149,7 +156,7 @@ struct PhotoCanvas: View {
                 }
 
                 preview = loaded
-                previewURL = asset.url
+                previewSource = asset.previewSource
                 panOffset = constrained(
                     panOffset,
                     imageRect: imageRect,
@@ -161,7 +168,7 @@ struct PhotoCanvas: View {
                 Task {
                     for neighbor in neighbors {
                         _ = await PreviewPipeline.shared.image(
-                            for: neighbor.url,
+                            for: neighbor.previewSource,
                             maxPixelSize: 3_200,
                             priority: .background
                         )
@@ -330,7 +337,7 @@ struct PhotoCanvas: View {
         preview: PreviewImage?
     ) -> PreviewRequest {
         PreviewRequest(
-            url: asset.url,
+            source: asset.previewSource,
             maxPixelSize: previewRequestPixelSize(
                 containerSize: containerSize,
                 preview: preview
@@ -431,7 +438,7 @@ private struct CanvasMetrics: Equatable {
 }
 
 private struct PreviewRequest: Hashable {
-    let url: URL
+    let source: AssetSource
     let maxPixelSize: Int
 }
 
@@ -455,6 +462,46 @@ private struct PhotoPositionBadge: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(.black.opacity(0.62), in: Capsule())
+    }
+}
+
+/// Shown when the frame on screen is the largest copy stored on this Mac.
+/// Downloading is always the user's call, never automatic.
+private struct CloudOriginalBanner: View {
+    @Environment(AppModel.self) private var model
+
+    let isZoomedIn: Bool
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "icloud")
+                .foregroundStyle(.white.opacity(0.85))
+
+            Text(
+                isZoomedIn
+                    ? "Showing the local preview. The original is still in iCloud."
+                    : "Original is in iCloud. Download it to check focus at 1:1."
+            )
+            .lineLimit(2)
+
+            if model.isDownloadingOriginal {
+                ProgressView(value: model.downloadProgress)
+                    .progressViewStyle(.linear)
+                    .frame(width: 84)
+            } else {
+                Button("Download") {
+                    Task { await model.downloadCurrentOriginal() }
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
+        }
+        .font(.caption.weight(.medium))
+        .foregroundStyle(.white)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .background(.black.opacity(0.68), in: Capsule())
+        .transition(.opacity)
     }
 }
 

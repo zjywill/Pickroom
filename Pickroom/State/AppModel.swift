@@ -7,7 +7,12 @@ import SwiftUI
 final class AppModel {
     var assets: [PhotoAsset] = []
     var currentAssetID: UUID?
-    var sourceFolder: URL?
+    private(set) var librarySource: LibrarySource = .none
+    var photoAccess: PhotoKitAccess = .notDetermined
+    private(set) var photoCollections: [PhotoCollection] = []
+    private(set) var isDownloadingOriginal = false
+    private(set) var downloadProgress: Double = 0
+    var photoLibraryError: String?
     var filter: LibraryFilter = .all {
         didSet {
             ensureVisibleSelection()
@@ -29,6 +34,7 @@ final class AppModel {
     private let userDefaults: UserDefaults
     private var storedSelections: [String: StoredSelection] = [:]
     private var selectionSaveTask: Task<Void, Never>?
+    private var detailRequestedIDs: Set<UUID> = []
 
     init(
         scanner: PhotoLibraryScanner = PhotoLibraryScanner(),
@@ -40,6 +46,18 @@ final class AppModel {
         self.selectionStore = selectionStore
         self.rejectedPhotoManager = rejectedPhotoManager
         self.userDefaults = userDefaults
+    }
+
+    var sourceFolder: URL? {
+        librarySource.folderURL
+    }
+
+    var isPhotosSource: Bool {
+        librarySource.isPhotos
+    }
+
+    var selectedCollectionID: PhotoCollectionID? {
+        librarySource.collectionID
     }
 
     var filteredAssets: [PhotoAsset] {
@@ -57,7 +75,25 @@ final class AppModel {
     }
 
     var sourceName: String {
-        sourceFolder?.lastPathComponent ?? "No folder"
+        switch librarySource {
+        case .none:
+            "No source"
+        case let .folder(url):
+            url.lastPathComponent
+        case let .photos(id):
+            photoCollections.first(where: { $0.id == id })?.title ?? "Photos"
+        }
+    }
+
+    var sourceSubtitle: String? {
+        switch librarySource {
+        case .none:
+            nil
+        case let .folder(url):
+            url.deletingLastPathComponent().path
+        case .photos:
+            "Photos Library"
+        }
     }
 
     var archivedAssetCount: Int {
@@ -76,8 +112,26 @@ final class AppModel {
             }
     }
 
+    /// The current photo needs its original downloaded before Pickroom can
+    /// show full resolution pixels or capture settings.
+    var currentAssetNeedsDownload: Bool {
+        currentAsset?.needsOriginalDownload ?? false
+    }
+
+    var trashConfirmationTitle: String {
+        isPhotosSource ? "Delete Rejected Photos?" : "Move Rejected Photos to Trash?"
+    }
+
     var trashConfirmationMessage: String {
         let photoLabel = rejectedAssetCount == 1 ? "photo" : "photos"
+
+        if isPhotosSource {
+            return "\(rejectedAssetCount) rejected \(photoLabel) "
+                + "will be moved to Recently Deleted in Photos. "
+                + "Photos asks for its own confirmation, and the \(photoLabel) "
+                + "stay recoverable there for 30 days."
+        }
+
         let fileLabel = rejectedFileCount == 1 ? "file" : "files"
         let pairedFileNote = rejectedFileCount > rejectedAssetCount
             ? ", including paired files"
@@ -147,8 +201,9 @@ final class AppModel {
             }
         }
 
-        sourceFolder = folder
+        librarySource = .folder(folder)
         assets = scanned
+        detailRequestedIDs.removeAll()
         filter = .all
         resetZoom()
         fitPixelScale = 1
@@ -172,6 +227,191 @@ final class AppModel {
             return
         }
         await loadFolder(URL(fileURLWithPath: path, isDirectory: true))
+    }
+
+    // MARK: - Photos library
+
+    /// Asks for photo library access the first time and opens the library.
+    ///
+    /// Never called automatically at launch: the system access prompt should
+    /// only appear because the user asked for the Photos library.
+    func openPhotosLibrary() async {
+        guard !isLoading else { return }
+        photoLibraryError = nil
+
+        let access = await PhotoKitLibrary.shared.requestAccess()
+        photoAccess = access
+
+        guard access.canRead else {
+            photoLibraryError = access.explanation
+            return
+        }
+
+        isLoading = true
+        let collections = await PhotoKitLibrary.shared.collections()
+        photoCollections = collections
+        isLoading = false
+
+        guard let first = collections.first else {
+            photoLibraryError = "Your photo library has no photos Pickroom can show."
+            return
+        }
+
+        await loadCollection(first)
+    }
+
+    func loadCollection(_ collection: PhotoCollection) async {
+        guard !isLoading, photoAccess.canRead else { return }
+        isLoading = true
+        loadError = nil
+        photoLibraryError = nil
+
+        await selectionSaveTask?.value
+        storedSelections = await selectionStore.load()
+        var fetched = await PhotoKitLibrary.shared.assets(in: collection.id)
+        for index in fetched.indices {
+            if let stored = storedSelections[fetched[index].selectionKey] {
+                fetched[index].decision = stored.decision
+                fetched[index].rating = stored.rating
+            }
+        }
+
+        librarySource = .photos(collection.id)
+        assets = fetched
+        detailRequestedIDs.removeAll()
+        filter = .all
+        resetZoom()
+        fitPixelScale = 1
+        currentAssetID = fetched.first?.id
+        workspaceMode = .cull
+        isLoading = false
+
+        if fetched.isEmpty {
+            loadError = "“\(collection.title)” has no photos Pickroom can show."
+        }
+    }
+
+    /// Fills in the original filename and RAW flag for one Photos asset.
+    /// Reads PhotoKit's local records only, so it never triggers a download.
+    func resolveDetailsIfNeeded(for asset: PhotoAsset) {
+        guard
+            let identifier = asset.source.localIdentifier,
+            asset.metadata.requiresOriginalForDetails,
+            !detailRequestedIDs.contains(asset.id)
+        else {
+            return
+        }
+
+        detailRequestedIDs.insert(asset.id)
+        let assetID = asset.id
+        Task {
+            let details = await PhotoKitLibrary.shared.resourceDetails(
+                localIdentifier: identifier
+            )
+            applyResourceDetails(details, to: assetID)
+        }
+    }
+
+    private func applyResourceDetails(_ details: PhotoResourceDetails?, to assetID: UUID) {
+        guard
+            let details,
+            let index = assets.firstIndex(where: { $0.id == assetID })
+        else {
+            return
+        }
+
+        assets[index].filename = details.filename
+        assets[index].metadata.isRaw = details.isRaw
+        if !details.fileExtension.isEmpty {
+            assets[index].metadata.fileExtension = details.fileExtension.uppercased()
+        }
+    }
+
+    /// Downloads the current photo's original from iCloud. This is the only
+    /// place Pickroom uses the network, and only on an explicit request.
+    func downloadCurrentOriginal() async {
+        guard
+            !isLoading,
+            !isDownloadingOriginal,
+            let asset = currentAsset,
+            let identifier = asset.source.localIdentifier,
+            asset.downloadedOriginalURL == nil
+        else {
+            return
+        }
+
+        isDownloadingOriginal = true
+        downloadProgress = 0
+        photoLibraryError = nil
+
+        do {
+            let url = try await PhotoKitLibrary.shared.downloadOriginal(
+                localIdentifier: identifier,
+                progress: { [weak self] value in
+                    Task { @MainActor in
+                        self?.downloadProgress = value
+                    }
+                }
+            )
+            let isRaw = PhotoLibraryScanner.isRaw(url)
+            let metadata = await Task.detached {
+                MetadataReader.read(from: url, isRaw: isRaw)
+            }.value
+            applyDownloadedOriginal(url, metadata: metadata, to: asset.id)
+        } catch {
+            photoLibraryError = error.localizedDescription
+        }
+
+        isDownloadingOriginal = false
+        downloadProgress = 0
+    }
+
+    private func applyDownloadedOriginal(
+        _ url: URL,
+        metadata: PhotoMetadata,
+        to assetID: UUID
+    ) {
+        guard let index = assets.firstIndex(where: { $0.id == assetID }) else { return }
+
+        var resolved = metadata
+        resolved.requiresOriginalForDetails = false
+        assets[index].downloadedOriginalURL = url
+        assets[index].filename = url.lastPathComponent
+        assets[index].metadata = resolved
+    }
+
+    private func deleteRejectedPhotosFromLibrary() async {
+        let candidates = assets.filter { $0.decision == .reject }
+        guard !candidates.isEmpty else { return }
+
+        isShowingTrashConfirmation = false
+        isManagingRejects = true
+        fileOperationError = nil
+
+        do {
+            try await PhotoKitLibrary.shared.delete(
+                localIdentifiers: candidates.compactMap { $0.source.localIdentifier }
+            )
+
+            for candidate in candidates {
+                storedSelections.removeValue(forKey: candidate.selectionKey)
+                if let downloaded = candidate.downloadedOriginalURL {
+                    PhotoKitLibrary.shared.discardDownloadedOriginal(at: downloaded)
+                }
+            }
+            await saveStoredSelections()
+
+            let removedIDs = Set(candidates.map(\.id))
+            assets.removeAll { removedIDs.contains($0.id) }
+            currentAssetID = nil
+            ensureVisibleSelection()
+        } catch PhotoKitError.cancelled {
+            // Photos asked, the user said no. Leave the decisions untouched.
+        } catch {
+            fileOperationError = error.localizedDescription
+        }
+
+        isManagingRejects = false
     }
 
     func select(_ asset: PhotoAsset) {
@@ -262,13 +502,14 @@ final class AppModel {
     }
 
     func moveRejectedPhotosToTrash() async {
-        guard
-            !isLoading,
-            !isManagingRejects,
-            let sourceFolder
-        else {
+        guard !isLoading, !isManagingRejects else { return }
+
+        if isPhotosSource {
+            await deleteRejectedPhotosFromLibrary()
             return
         }
+
+        guard let sourceFolder else { return }
 
         let candidates = assets.filter { $0.decision == .reject }
         guard !candidates.isEmpty else { return }
@@ -277,13 +518,13 @@ final class AppModel {
         isManagingRejects = true
         fileOperationError = nil
 
-        let preferredSelectionPath = currentAsset?.url.standardizedFileURL.path
+        let preferredSelectionKey = currentAsset?.selectionKey
         let result = await rejectedPhotoManager.moveToTrash(candidates)
         migrateSelectionsForRemainingFiles(in: candidates)
         await saveStoredSelections()
         await reloadAssetsAfterFileOperation(
             sourceFolder: sourceFolder,
-            preferredSelectionPath: preferredSelectionPath
+            preferredSelectionKey: preferredSelectionKey
         )
 
         isManagingRejects = false
@@ -428,7 +669,8 @@ final class AppModel {
                 )
             )
 
-            assets[index].url = relocation.destinationURL
+            assets[index].source = .file(relocation.destinationURL)
+            assets[index].filename = relocation.destinationURL.lastPathComponent
             assets[index].companionURL = relocation.destinationCompanionURL
             assets[index].isArchived = isArchived
         }
@@ -441,12 +683,13 @@ final class AppModel {
 
     private func migrateSelectionsForRemainingFiles(in candidates: [PhotoAsset]) {
         for asset in candidates {
+            guard let primaryURL = asset.fileURL else { continue }
             let primaryKey = asset.selectionKey
             let selection = storedSelections[primaryKey] ?? StoredSelection(
                 decision: asset.decision,
                 rating: asset.rating
             )
-            let primaryExists = FileManager.default.fileExists(atPath: asset.url.path)
+            let primaryExists = FileManager.default.fileExists(atPath: primaryURL.path)
             let companionExists = asset.companionURL.map {
                 FileManager.default.fileExists(atPath: $0.path)
             } ?? false
@@ -462,7 +705,7 @@ final class AppModel {
 
     private func reloadAssetsAfterFileOperation(
         sourceFolder: URL,
-        preferredSelectionPath: String?
+        preferredSelectionKey: String?
     ) async {
         var scanned = await scanner.scan(folder: sourceFolder)
         for index in scanned.indices {
@@ -473,9 +716,10 @@ final class AppModel {
         }
 
         assets = scanned
-        if let preferredSelectionPath,
+        detailRequestedIDs.removeAll()
+        if let preferredSelectionKey,
            let preferred = scanned.first(where: {
-               $0.url.standardizedFileURL.path == preferredSelectionPath
+               $0.selectionKey == preferredSelectionKey
            }) {
             currentAssetID = preferred.id
         } else {

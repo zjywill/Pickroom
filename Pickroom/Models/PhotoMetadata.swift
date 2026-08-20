@@ -15,8 +15,15 @@ struct PhotoMetadata: Codable, Hashable, Sendable {
     var fileExtension: String
     var isRaw: Bool
     var decoderName: String
+    /// Photos assets only expose dimensions and capture date until the
+    /// original is downloaded; capture settings stay empty until then.
+    var requiresOriginalForDetails = false
 
     static func placeholder(for url: URL, isRaw: Bool) -> PhotoMetadata {
+        placeholder(fileExtension: url.pathExtension.uppercased(), isRaw: isRaw)
+    }
+
+    static func placeholder(fileExtension: String, isRaw: Bool) -> PhotoMetadata {
         PhotoMetadata(
             pixelWidth: nil,
             pixelHeight: nil,
@@ -29,7 +36,7 @@ struct PhotoMetadata: Codable, Hashable, Sendable {
             iso: nil,
             capturedAt: nil,
             fileSize: nil,
-            fileExtension: url.pathExtension.uppercased(),
+            fileExtension: fileExtension.uppercased(),
             isRaw: isRaw,
             decoderName: isRaw ? "RAW decoder pending" : "ImageIO"
         )
