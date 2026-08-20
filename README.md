@@ -112,3 +112,8 @@ The LibRaw XCFramework contains arm64 and x86_64 slices and is built for macOS
 
 LibRaw is distributed under LGPL 2.1 or CDDL 1.0. License texts are included in
 `Packages/RawEngine/ThirdPartyLicenses`.
+
+## License
+
+Pickroom is released under the MIT License; see [LICENSE](LICENSE). The
+bundled LibRaw engine keeps its own terms as described above.
