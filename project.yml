@@ -18,6 +18,11 @@ targets:
     platform: macOS
     sources:
       - path: Pickroom
+      # Bundled so the acknowledgements window can show the licence texts on a
+      # Mac that only ever saw the DMG. Referenced where they live rather than
+      # copied, so there is one copy to keep correct.
+      - path: Packages/RawEngine/ThirdPartyLicenses
+        buildPhase: resources
     dependencies:
       - package: RawEngine
     settings:

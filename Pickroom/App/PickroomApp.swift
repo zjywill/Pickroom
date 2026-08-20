@@ -19,5 +19,14 @@ struct PickroomApp: App {
         .commands {
             PickroomCommands(model: model)
         }
+
+        Window("Acknowledgements", id: AcknowledgementsWindow.id) {
+            AcknowledgementsView()
+        }
+        .windowResizability(.contentSize)
     }
+}
+
+enum AcknowledgementsWindow {
+    static let id = "acknowledgements"
 }

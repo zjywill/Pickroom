@@ -30,6 +30,29 @@ drag Pickroom to Applications.
 The DMG and the app inside it are signed with an Apple Developer ID and
 notarized by Apple, so there is no Gatekeeper detour on first launch.
 
+## Third-party software
+
+RAW decoding is [LibRaw](https://www.libraw.org) 0.22.2, dual licensed under
+the LGPL 2.1 and the CDDL 1.0. **Pickroom uses it under the CDDL 1.0** — LGPL
+2.1 section 6 asks that a user be able to relink the program against a modified
+library, which an App Store binary cannot offer, while the CDDL's copyleft is
+per file and explicitly allows a combined work to ship under other terms.
+
+Pickroom links an unmodified upstream build, so there are no modifications to
+publish. The source archive is mirrored at
+`Packages/RawEngine/Libraries/LibRaw-0.22.2.tar.gz`, and
+[`Tools/build-libraw.sh`](Tools/build-libraw.sh) rebuilds the shipped
+framework from it — checksum pinned, and it refuses to build on a mismatch.
+The framework in the tree was checked against a fresh build from that archive:
+identical exported symbols on both architectures, identical headers.
+
+Both licence texts live in
+[`Packages/RawEngine/ThirdPartyLicenses`](Packages/RawEngine/ThirdPartyLicenses)
+alongside a fuller [NOTICE](Packages/RawEngine/ThirdPartyLicenses/NOTICE.md),
+and ship inside the app: **Pickroom → Acknowledgements**.
+
+Pickroom's own code is MIT, in [LICENSE](LICENSE).
+
 ## Current prototype
 
 - Open or drag in a folder containing RAW, HEIC, TIFF, JPEG, PNG, or SVG files.

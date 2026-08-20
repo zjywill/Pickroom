@@ -3,7 +3,15 @@ import SwiftUI
 struct PickroomCommands: Commands {
     let model: AppModel
 
+    @Environment(\.openWindow) private var openWindow
+
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("Acknowledgements") {
+                openWindow(id: AcknowledgementsWindow.id)
+            }
+        }
+
         CommandGroup(replacing: .newItem) {
             Button("Open Photo Folder…") {
                 model.openFolder()
