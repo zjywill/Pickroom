@@ -31,7 +31,9 @@ final class AppModel {
     /// act on the current photo alone.
     var selectedAssetIDs: Set<UUID> = []
     var isChoosingLocation = false
+    var isShowingLocationClearConfirmation = false
     private(set) var isTaggingLocation = false
+    private(set) var pendingLocationClearScope: LocationScope = .current
 
     private let scanner: PhotoLibraryScanner
     private let selectionStore: SelectionStore
@@ -495,6 +497,14 @@ final class AppModel {
         return scopes
     }
 
+    /// The scope an action should take when nothing says otherwise: whatever
+    /// the user explicitly picked out, and the one photo in front of them if
+    /// they picked out nothing. Never the whole view by default — writing to
+    /// every photo on screen has to be asked for.
+    var defaultLocationScope: LocationScope {
+        selectedAssetIDs.count > 1 ? .selection : .current
+    }
+
     func assets(for scope: LocationScope) -> [PhotoAsset] {
         switch scope {
         case .current:
@@ -533,6 +543,56 @@ final class AppModel {
         }
 
         presentFailures(result.failures, action: "tag")
+    }
+
+    func locatedAssetCount(for scope: LocationScope) -> Int {
+        assets(for: scope).count { $0.metadata.location != nil }
+    }
+
+    func requestLocationClear(scope: LocationScope) {
+        guard !isLoading, !isTaggingLocation, locatedAssetCount(for: scope) > 0 else { return }
+        pendingLocationClearScope = scope
+        isShowingLocationClearConfirmation = true
+    }
+
+    var locationClearConfirmationMessage: String {
+        let count = locatedAssetCount(for: pendingLocationClearScope)
+        let subject = count == 1 ? "this photo" : "\(count) photos"
+        return "The location will be removed from \(subject). "
+            + "Sidecars that hold nothing else are deleted, and other formats "
+            + "are rewritten without their GPS block. This cannot be undone."
+    }
+
+    func clearPendingLocation() async {
+        guard !isTaggingLocation else { return }
+
+        let targets = assets(for: pendingLocationClearScope)
+        guard !targets.isEmpty else { return }
+
+        isTaggingLocation = true
+        let result = await locationTagger.clear(from: targets)
+        isTaggingLocation = false
+
+        let cleared = Set(result.clearedAssetIDs)
+        for index in assets.indices where cleared.contains(assets[index].id) {
+            assets[index].metadata.location = nil
+        }
+
+        presentFailures(result.failures, action: "clear the location from")
+
+        // Silence here would be a privacy bug: the user asked for the location
+        // to be gone and it is still in the file.
+        if !result.stillEmbedded.isEmpty, fileOperationError == nil {
+            let names = result.stillEmbedded.prefix(3).joined(separator: "\n")
+            let remaining = result.stillEmbedded.count - min(result.stillEmbedded.count, 3)
+            fileOperationError = "\(result.stillEmbedded.count) raw "
+                + (result.stillEmbedded.count == 1 ? "file" : "files")
+                + " still carry a location their camera recorded. Pickroom "
+                + "cleared the sidecar, but it cannot rewrite a proprietary "
+                + "raw file.\n\n"
+                + names
+                + (remaining > 0 ? "\n…and \(remaining) more." : "")
+        }
     }
 
     // MARK: - Contact sheet selection

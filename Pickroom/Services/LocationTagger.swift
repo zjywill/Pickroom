@@ -12,6 +12,15 @@ struct LocationTagResult: Sendable {
     var failures: [FileOperationFailure] = []
 }
 
+struct LocationClearResult: Sendable {
+    var clearedAssetIDs: [UUID] = []
+    /// Raw files whose camera wrote coordinates into the file itself. The
+    /// sidecar is gone but the file still knows where it was taken, and
+    /// nothing here can change that.
+    var stillEmbedded: [String] = []
+    var failures: [FileOperationFailure] = []
+}
+
 /// Writes one location onto many photos, off the main actor.
 ///
 /// A wedding is one venue and eight hundred frames, so this is the shape the
@@ -59,6 +68,44 @@ actor LocationTagger {
                         )
                     )
                 }
+            }
+        }
+
+        return result
+    }
+
+    /// Strips coordinates from every photo that has any.
+    ///
+    /// Photos without one are skipped rather than rewritten: clearing a whole
+    /// folder should not rewrite two thousand files that never had a location
+    /// to begin with.
+    func clear(from assets: [PhotoAsset]) -> LocationClearResult {
+        var result = LocationClearResult()
+
+        for asset in assets {
+            guard let primaryURL = asset.fileURL else { continue }
+
+            let urls = [primaryURL] + (asset.companionURL.map { [$0] } ?? [])
+            var cleared = false
+
+            for url in urls where PhotoLocationWriter.hasLocation(url) {
+                do {
+                    if try PhotoLocationWriter.clear(from: url) {
+                        result.stillEmbedded.append(url.lastPathComponent)
+                    }
+                    cleared = true
+                } catch {
+                    result.failures.append(
+                        FileOperationFailure(
+                            filename: url.lastPathComponent,
+                            reason: error.localizedDescription
+                        )
+                    )
+                }
+            }
+
+            if cleared {
+                result.clearedAssetIDs.append(asset.id)
             }
         }
 

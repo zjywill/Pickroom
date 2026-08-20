@@ -45,7 +45,7 @@ notarized by Apple, so there is no Gatekeeper detour on first launch.
 - Inspect composition with the thirds grid (`C`).
 - Switch between culling and contact sheet views with `Command-1` and `Command-2`.
 - Give photos a location on a map (`Command-L`), one at a time or a whole
-  shoot at once.
+  shoot at once, or strip the location back out (`Shift-Command-L`).
 - Move current rejects and paired files to macOS Trash after one explicit confirmation.
   In the photo library, rejects go to Recently Deleted instead, and Photos asks
   for its own confirmation.
@@ -76,6 +76,20 @@ across untouched, so tagging a JPEG twice costs it nothing.
 An existing sidecar is edited rather than replaced — develop settings and
 keywords from Lightroom or Capture One survive. A RAW and its paired JPEG both
 get the coordinates, since they are one photograph.
+
+#### Taking a location back off
+
+`Shift-Command-L` removes it, and the map has a remove button that follows
+whichever scope is selected — that is the way to undo a location applied more
+widely than intended. A sidecar holding nothing but coordinates is deleted
+rather than left behind empty; one that carries develop settings or keywords
+keeps them and only loses its GPS. Other formats are rewritten without their
+GPS block, again without touching the picture.
+
+Stripping a location before sharing is a reason to use this, so one limit
+matters: if a camera wrote coordinates into a proprietary raw file itself,
+Pickroom clears the sidecar but cannot rewrite the raw, and it says so plainly
+rather than showing an empty field.
 
 Lightroom reads a sidecar when it imports the photo. If the photo is already in
 its catalogue, `Metadata → Read Metadata from File` is what picks the location

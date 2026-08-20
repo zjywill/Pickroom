@@ -72,6 +72,16 @@ struct PickroomCommands: Commands {
             }
             .keyboardShortcut("l", modifiers: .command)
             .disabled(model.currentAsset == nil || model.isLoading || model.isTaggingLocation)
+
+            Button("Remove Location") {
+                model.requestLocationClear(scope: model.defaultLocationScope)
+            }
+            .keyboardShortcut("l", modifiers: [.command, .shift])
+            .disabled(
+                model.locatedAssetCount(for: model.defaultLocationScope) == 0
+                    || model.isLoading
+                    || model.isTaggingLocation
+            )
         }
 
         CommandMenu("Inspect") {

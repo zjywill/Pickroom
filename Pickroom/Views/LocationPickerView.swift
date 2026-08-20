@@ -153,6 +153,15 @@ struct LocationPickerView: View {
                 .fixedSize()
             }
 
+            if model.locatedAssetCount(for: scope) > 0 {
+                Button(removeLabel, role: .destructive) {
+                    // Confirmed outside the sheet: stacking an alert on top of
+                    // a sheet reads as a glitch, and this is not undoable.
+                    model.requestLocationClear(scope: scope)
+                    dismiss()
+                }
+            }
+
             Button("Cancel", role: .cancel) { dismiss() }
 
             Button(applyLabel) {
@@ -175,6 +184,11 @@ struct LocationPickerView: View {
         return count == 1 ? "Apply to 1 Photo" : "Apply to \(count) Photos"
     }
 
+    private var removeLabel: String {
+        let count = model.locatedAssetCount(for: scope)
+        return count == 1 ? "Remove Location" : "Remove from \(count)"
+    }
+
     private func label(for scope: LocationScope) -> String {
         switch scope {
         case .current: "This photo"
@@ -187,7 +201,7 @@ struct LocationPickerView: View {
         // The narrowest scope the user actually asked for. Defaulting to the
         // widest one writes a location into every photo in view on a click
         // meant for one, and there is no undo for that.
-        scope = model.selectedAssetIDs.count > 1 ? .selection : .current
+        scope = model.defaultLocationScope
 
         guard let existing = model.currentAsset?.metadata.location else { return }
         let center = CLLocationCoordinate2D(

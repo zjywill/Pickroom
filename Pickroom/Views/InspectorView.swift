@@ -177,6 +177,13 @@ private struct LocationButton: View {
             }
             .disabled(refusal != nil || model.isLoading || model.isTaggingLocation)
 
+            if asset.metadata.location != nil {
+                Button("Remove Location", role: .destructive) {
+                    model.requestLocationClear(scope: model.defaultLocationScope)
+                }
+                .disabled(model.isLoading || model.isTaggingLocation)
+            }
+
             if let refusal {
                 Text(refusal)
                     .font(.caption)

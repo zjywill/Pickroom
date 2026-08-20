@@ -75,6 +75,29 @@ enum PhotoLocationWriter {
         }
     }
 
+    /// Removes the coordinates, and reports what it could not reach.
+    ///
+    /// Returns true when the photo still has a location afterwards. That only
+    /// happens for proprietary raw whose camera wrote coordinates into the
+    /// file: the sidecar is cleared, but the file cannot be rewritten. Someone
+    /// stripping a location before sharing needs to be told that, not shown an
+    /// empty field.
+    @discardableResult
+    static func clear(from url: URL) throws -> Bool {
+        switch try target(for: url) {
+        case .sidecar:
+            try LocationSidecar.clear(for: url)
+            return embeddedLocation(in: url) != nil
+        case .inPlace:
+            try clearInPlace(from: url)
+            return false
+        }
+    }
+
+    static func hasLocation(_ url: URL) -> Bool {
+        (try? target(for: url)) != nil && read(from: url) != nil
+    }
+
     /// Reads whatever location the photo already has.
     ///
     /// The sidecar wins over the file for RAW: if both carry coordinates, the
@@ -83,6 +106,19 @@ enum PhotoLocationWriter {
         if case .sidecar = try? target(for: url), let sidecar = LocationSidecar.read(for: url) {
             return sidecar
         }
+        guard
+            let source = CGImageSourceCreateWithURL(
+                url as CFURL,
+                [kCGImageSourceShouldCache: false] as CFDictionary
+            ),
+            let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any]
+        else {
+            return nil
+        }
+        return location(fromGPS: properties[kCGImagePropertyGPSDictionary] as? [CFString: Any])
+    }
+
+    private static func embeddedLocation(in url: URL) -> PhotoLocation? {
         guard
             let source = CGImageSourceCreateWithURL(
                 url as CFURL,
@@ -122,6 +158,23 @@ enum PhotoLocationWriter {
     /// out with the pixels it went in with — no generational loss from
     /// tagging a photo, and no loss from tagging it a second time.
     private static func writeInPlace(_ location: PhotoLocation, to url: URL) throws {
+        try rewrite(url) { properties in
+            properties[kCGImagePropertyGPSDictionary] = gpsDictionary(for: location)
+        }
+    }
+
+    private static func clearInPlace(from url: URL) throws {
+        // Dropping the key would leave the original block untouched — absent
+        // means "unchanged" to ImageIO. kCFNull is how a property is deleted.
+        try rewrite(url) { properties in
+            properties[kCGImagePropertyGPSDictionary] = kCFNull
+        }
+    }
+
+    private static func rewrite(
+        _ url: URL,
+        updating update: (inout [CFString: Any]) -> Void
+    ) throws {
         guard
             let source = CGImageSourceCreateWithURL(url as CFURL, nil),
             let type = CGImageSourceGetType(source)
@@ -131,7 +184,7 @@ enum PhotoLocationWriter {
 
         var properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil)
             as? [CFString: Any] ?? [:]
-        properties[kCGImagePropertyGPSDictionary] = gpsDictionary(for: location)
+        update(&properties)
 
         let temporaryURL = url
             .deletingLastPathComponent()

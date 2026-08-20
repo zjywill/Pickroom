@@ -190,6 +190,20 @@ struct RootView: View {
         } message: {
             Text(model.trashConfirmationMessage)
         }
+        .alert(
+            "Remove Location",
+            isPresented: Binding(
+                get: { model.isShowingLocationClearConfirmation },
+                set: { model.isShowingLocationClearConfirmation = $0 }
+            )
+        ) {
+            Button("Cancel", role: .cancel) {}
+            Button("Remove Location", role: .destructive) {
+                Task { await model.clearPendingLocation() }
+            }
+        } message: {
+            Text(model.locationClearConfirmationMessage)
+        }
         .sheet(
             isPresented: Binding(
                 get: { model.isChoosingLocation },

@@ -206,6 +206,111 @@ final class PhotoLocationTests: XCTestCase {
         XCTAssertEqual(location.latitude, beijing.latitude, accuracy: 0.0001)
     }
 
+    // MARK: - Clearing
+
+    func testClearingRemovesGPSFromAJPEG() throws {
+        let jpeg = try makeJPEG(named: "DSC0020.jpg")
+        try PhotoLocationWriter.write(beijing, to: jpeg)
+        XCTAssertNotNil(PhotoLocationWriter.read(from: jpeg))
+
+        let stillEmbedded = try PhotoLocationWriter.clear(from: jpeg)
+
+        XCTAssertFalse(stillEmbedded)
+        XCTAssertNil(PhotoLocationWriter.read(from: jpeg))
+        XCTAssertFalse(PhotoLocationWriter.hasLocation(jpeg))
+    }
+
+    func testClearingLeavesTheJPEGPixelsAlone() throws {
+        let jpeg = try makeJPEG(named: "DSC0021.jpg")
+        let before = try pixelData(of: jpeg)
+
+        try PhotoLocationWriter.write(beijing, to: jpeg)
+        try PhotoLocationWriter.clear(from: jpeg)
+
+        XCTAssertEqual(try pixelData(of: jpeg), before)
+    }
+
+    /// A sidecar Pickroom created holds nothing else, so clearing it should
+    /// leave no file behind rather than an empty husk beside the raw.
+    func testClearingDeletesASidecarThatHeldOnlyCoordinates() throws {
+        let raw = temporaryFolder.appendingPathComponent("DSC0022.ARW")
+        try Data("raw".utf8).write(to: raw)
+        try PhotoLocationWriter.write(beijing, to: raw)
+
+        let sidecar = temporaryFolder.appendingPathComponent("DSC0022.xmp")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: sidecar.path))
+
+        try PhotoLocationWriter.clear(from: raw)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: sidecar.path))
+        XCTAssertNil(PhotoLocationWriter.read(from: raw))
+    }
+
+    func testClearingKeepsASidecarThatHoldsOtherWork() throws {
+        let raw = temporaryFolder.appendingPathComponent("DSC0023.NEF")
+        try Data("raw".utf8).write(to: raw)
+
+        let sidecar = temporaryFolder.appendingPathComponent("DSC0023.xmp")
+        try Data("""
+        <x:xmpmeta xmlns:x="adobe:ns:meta/">
+          <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+            <rdf:Description rdf:about="" xmlns:crs="http://ns.adobe.com/camera-raw-settings/1.0/"
+              crs:Exposure2012="+1.35"/>
+          </rdf:RDF>
+        </x:xmpmeta>
+        """.utf8).write(to: sidecar)
+
+        try PhotoLocationWriter.write(beijing, to: raw)
+        try PhotoLocationWriter.clear(from: raw)
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: sidecar.path))
+        let updated = try String(contentsOf: sidecar, encoding: .utf8)
+        XCTAssertTrue(updated.contains("crs:Exposure2012=\"+1.35\""))
+        XCTAssertFalse(updated.contains("GPSLatitude"))
+        XCTAssertNil(PhotoLocationWriter.read(from: raw))
+    }
+
+    func testClearingIsHarmlessWhenThereIsNoLocation() throws {
+        let raw = temporaryFolder.appendingPathComponent("DSC0024.ARW")
+        try Data("raw".utf8).write(to: raw)
+        XCTAssertNoThrow(try PhotoLocationWriter.clear(from: raw))
+
+        let jpeg = try makeJPEG(named: "DSC0025.jpg")
+        XCTAssertNoThrow(try PhotoLocationWriter.clear(from: jpeg))
+        XCTAssertNil(PhotoLocationWriter.read(from: jpeg))
+    }
+
+    func testTaggerClearsAPairAndSkipsPhotosWithNoLocation() async throws {
+        let taggedJPEG = try makeJPEG(named: "DSC0026.jpg")
+        try PhotoLocationWriter.write(beijing, to: taggedJPEG)
+        let untouched = try makeJPEG(named: "DSC0027.jpg")
+
+        let raw = temporaryFolder.appendingPathComponent("DSC0028.ARW")
+        try Data("raw".utf8).write(to: raw)
+        let companion = try makeJPEG(named: "DSC0028.jpg")
+        try PhotoLocationWriter.write(sydney, to: raw)
+        try PhotoLocationWriter.write(sydney, to: companion)
+
+        let assets = [
+            PhotoAsset(url: taggedJPEG, metadata: .placeholder(for: taggedJPEG, isRaw: false)),
+            PhotoAsset(url: untouched, metadata: .placeholder(for: untouched, isRaw: false)),
+            PhotoAsset(
+                url: raw,
+                companionURL: companion,
+                metadata: .placeholder(for: raw, isRaw: true)
+            )
+        ]
+
+        let result = await LocationTagger().clear(from: assets)
+
+        XCTAssertEqual(result.clearedAssetIDs.count, 2)
+        XCTAssertTrue(result.failures.isEmpty)
+        XCTAssertTrue(result.stillEmbedded.isEmpty)
+        XCTAssertNil(PhotoLocationWriter.read(from: taggedJPEG))
+        XCTAssertNil(PhotoLocationWriter.read(from: raw))
+        XCTAssertNil(PhotoLocationWriter.read(from: companion))
+    }
+
     // MARK: - Batch
 
     func testTaggerAppliesOneLocationToEveryPhotoAndReportsWhatItCannot() async throws {

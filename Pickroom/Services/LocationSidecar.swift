@@ -10,6 +10,9 @@ import Foundation
 /// `DSC0001.xmp`. A RAW+JPEG pair sharing a stem therefore shares one sidecar,
 /// which is correct — it is one photograph.
 enum LocationSidecar {
+    private static let gpsProperties = [
+        "exif:GPSLatitude", "exif:GPSLongitude", "exif:GPSVersionID"
+    ]
     private static let exifNamespace = "http://ns.adobe.com/exif/1.0/"
     private static let rdfNamespace = "http://www.w3.org/1999/02/22-rdf-syntax-ns#"
 
@@ -59,7 +62,7 @@ enum LocationSidecar {
 
         // A property spelled as a child element would win over the attribute
         // form written below, so any stale one has to go.
-        for name in ["exif:GPSLatitude", "exif:GPSLongitude", "exif:GPSVersionID"] {
+        for name in gpsProperties {
             for child in description.elements(forName: name) {
                 description.removeChild(at: child.index)
             }
@@ -69,6 +72,10 @@ enum LocationSidecar {
         set("exif:GPSLongitude", GPSCoordinateFormat.xmp(location.longitude, isLatitude: false), on: description)
         set("exif:GPSVersionID", "2.2.0.0", on: description)
 
+        try write(document, to: sidecarURL)
+    }
+
+    private static func write(_ document: XMLDocument, to sidecarURL: URL) throws {
         // The root element, not the whole document: serialising the document
         // would emit an <?xml?> declaration, and the xpacket instruction that
         // has to come first would then sit ahead of it. That is malformed XML,
@@ -82,6 +89,48 @@ enum LocationSidecar {
             + "\n<?xpacket end=\"w\"?>\n"
 
         try Data(packet.utf8).write(to: sidecarURL, options: .atomic)
+    }
+
+    /// Removes the coordinates from the sidecar.
+    ///
+    /// A sidecar that held nothing but coordinates is deleted outright. Leaving
+    /// an empty one behind would litter the folder Lightroom is about to import
+    /// and would read, to anyone looking, as though a location were still
+    /// recorded. One that carries anything else — develop settings, keywords —
+    /// is kept and merely loses its GPS properties.
+    static func clear(for photoURL: URL) throws {
+        let sidecarURL = url(for: photoURL)
+        guard
+            let document = existingDocument(at: sidecarURL),
+            let description = descriptionElement(in: document)
+        else {
+            return
+        }
+
+        for name in gpsProperties {
+            if let attribute = description.attribute(forName: name) {
+                description.removeAttribute(forName: attribute.name ?? name)
+            }
+            for child in description.elements(forName: name) {
+                description.removeChild(at: child.index)
+            }
+        }
+
+        if isEmpty(description) {
+            try FileManager.default.removeItem(at: sidecarURL)
+            return
+        }
+
+        try write(document, to: sidecarURL)
+    }
+
+    /// True when nothing but XMP scaffolding is left: `rdf:about` is required
+    /// on every Description and says nothing on its own.
+    private static func isEmpty(_ description: XMLElement) -> Bool {
+        let meaningfulAttributes = (description.attributes ?? []).filter {
+            $0.name != "rdf:about" && $0.name?.hasPrefix("xmlns") != true
+        }
+        return meaningfulAttributes.isEmpty && (description.children ?? []).isEmpty
     }
 
     // MARK: - Document plumbing
