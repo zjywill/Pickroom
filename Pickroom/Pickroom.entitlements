@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The sandbox is on for both channels, not just the App Store one: a
+	     Developer ID build is free to run without it, but keeping the two
+	     builds identical means one set of behaviour to test. -->
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+
+	<!-- Folders the user opens or drags in, the .pickroom-rejects folder
+	     written inside them, and moving rejects to Trash. -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+
+	<!-- Reopening the last folder on launch. Without this the bookmark
+	     resolves and the claim on it is refused. -->
+	<key>com.apple.security.files.bookmarks.app-scope</key>
+	<true/>
+
+	<!-- The photo library. Required twice over: by the sandbox, and by the
+	     hardened runtime, which denies it silently — no permission prompt,
+	     no row in System Settings, nothing for tccutil to reset. -->
+	<key>com.apple.security.personal-information.photos-library</key>
+	<true/>
+</dict>
+</plist>

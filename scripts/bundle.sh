@@ -22,6 +22,9 @@
 #   SIGN_ID          codesign identity        (default: the Developer ID
 #                    Application certificate found in the keychain)
 #   SIGN_ID=-        force ad-hoc even when a certificate is present
+#   ENTITLEMENTS     entitlements plist for the app signature
+#                    (default: Pickroom/Pickroom.entitlements — the
+#                    hardened runtime needs it to reach the photo library)
 #   NOTARIZE=0       Developer ID sign, but skip Apple's notary service
 #   NOTARY_PROFILE   notarytool keychain profile      (default: the first of
 #                    "pickroom thegit" the keychain answers for)
@@ -38,6 +41,7 @@ DMG="${DMG:-1}"
 SMOKE="${SMOKE:-0}"
 BUILD="${BUILD:-1}"
 NOTARIZE="${NOTARIZE:-1}"
+ENTITLEMENTS="${ENTITLEMENTS:-$(cd "$(dirname "$0")/.." && pwd)/Pickroom/Pickroom.entitlements}"
 
 cd "$(dirname "$0")/.."
 
@@ -102,21 +106,37 @@ echo "==> Assembling $APP_NAME.app"
 # this can't be bolted on at release time: the hardened runtime changes how
 # the app behaves at launch, so the build that gets smoke tested below has to
 # be the build that was signed this way.
+#
+# The second argument, when given, is an entitlements plist. Only the app
+# itself gets one: the hardened runtime denies the Photos library to a binary
+# that has not asked for it, and it denies it silently — no prompt, no row in
+# System Settings. Nested frameworks must NOT inherit the app's entitlements,
+# which is why this is a parameter rather than a constant.
 sign_path() {
+    if [ -n "${2:-}" ]; then
+        set -- "$1" --entitlements "$2"
+    else
+        set -- "$1"
+    fi
+    local target="$1"
+    shift
+
     if [ "$SIGN_ID" = "-" ]; then
         /usr/bin/codesign \
             --force \
             --sign - \
             --timestamp=none \
             --generate-entitlement-der \
-            "$1"
+            "$@" \
+            "$target"
     else
         /usr/bin/codesign \
             --force \
             --options runtime \
             --timestamp \
             --sign "$SIGN_ID" \
-            "$1"
+            "$@" \
+            "$target"
     fi
 }
 
@@ -149,7 +169,7 @@ for directory in "$APP/Contents/PlugIns" "$APP/Contents/XPCServices"; do
     fi
 done
 
-sign_path "$APP"
+sign_path "$APP" "$ENTITLEMENTS"
 
 echo "==> Verifying bundle"
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$APP"

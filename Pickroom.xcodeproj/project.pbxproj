@@ -42,6 +42,7 @@
 		E909502BC319FE6F4AAEEAB7 /* RawEngine in Frameworks */ = {isa = PBXBuildFile; productRef = 8289D8FB4B91C6DC184CD4A3 /* RawEngine */; };
 		ED29436789412C1601B08233 /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76B6F1F587D15DE36A82C578 /* SidebarView.swift */; };
 		EFEF28F112A2DB5F9A2A4F0C /* InspectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE0B0CD9F075AA79F9F9A240 /* InspectorView.swift */; };
+		FB0B353636B5C87F1278037C /* FolderAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0467C1792CC904C48129EBEF /* FolderAccess.swift */; };
 		FB56D38DFBFD20EFE907B84D /* PickroomCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72617B006365D2AFF1E961A9 /* PickroomCommands.swift */; };
 		FC2B4539E31EB37AC5D9A851 /* PreviewPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A14C890D518D4EDC6CF1959 /* PreviewPipeline.swift */; };
 /* End PBXBuildFile section */
@@ -57,6 +58,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0467C1792CC904C48129EBEF /* FolderAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderAccess.swift; sourceTree = "<group>"; };
 		0D21F24F56C2F35D66BE9F30 /* PhotoLibraryScannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryScannerTests.swift; sourceTree = "<group>"; };
 		0F65AE369872B75797351410 /* AssetSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetSourceTests.swift; sourceTree = "<group>"; };
 		1702FB1241CA89154AD12E8E /* CullingShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CullingShortcuts.swift; sourceTree = "<group>"; };
@@ -94,6 +96,7 @@
 		DBBC7BE440CB53F8EBB8198B /* RejectedPhotoManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RejectedPhotoManager.swift; sourceTree = "<group>"; };
 		DC6904476C5C739621CFDF3E /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		E3E5BCB629C6BB27F92AB3FF /* PickroomTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PickroomTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F1170F63109FB443FFDF0C55 /* Pickroom.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Pickroom.entitlements; sourceTree = "<group>"; };
 		FE0B0CD9F075AA79F9F9A240 /* InspectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InspectorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -198,6 +201,7 @@
 		C779E46994B84E29E7B7E233 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				0467C1792CC904C48129EBEF /* FolderAccess.swift */,
 				9F83980AE8E25989D79EDFC1 /* MetadataReader.swift */,
 				C7F770190D95A1C376B1CCC0 /* PhotoKitLibrary.swift */,
 				5B452C58072D937C42F7A561 /* PhotoLibraryScanner.swift */,
@@ -224,6 +228,7 @@
 			children = (
 				4E687D5816D9F084256D2C00 /* AppIcon.icon */,
 				A19487810C764FAE326A45F6 /* Assets.xcassets */,
+				F1170F63109FB443FFDF0C55 /* Pickroom.entitlements */,
 				D1866D7C3F125D6B629BCDD7 /* App */,
 				4B54EB0174A68EC3FFD17B81 /* Models */,
 				C779E46994B84E29E7B7E233 /* Services */,
@@ -353,6 +358,7 @@
 				1E93F849B631AC450F61E9A6 /* DecisionBar.swift in Sources */,
 				3431FFAEA9975B01AF8F4F82 /* EmptyLibraryView.swift in Sources */,
 				848FC19F09A21E5224F6A02B /* FilmstripView.swift in Sources */,
+				FB0B353636B5C87F1278037C /* FolderAccess.swift in Sources */,
 				EFEF28F112A2DB5F9A2A4F0C /* InspectorView.swift in Sources */,
 				1B03F3451503090786D7AA11 /* MetadataReader.swift in Sources */,
 				BCBFB9A035C76FC468254FFF /* PhotoAsset.swift in Sources */,
@@ -392,8 +398,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Pickroom/Pickroom.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Pickroom;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";
@@ -415,8 +422,9 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Pickroom/Pickroom.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Pickroom;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.photography";

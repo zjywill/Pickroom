@@ -31,7 +31,7 @@ final class AppModel {
     private let scanner: PhotoLibraryScanner
     private let selectionStore: SelectionStore
     private let rejectedPhotoManager: RejectedPhotoManager
-    private let userDefaults: UserDefaults
+    private let folderAccess: FolderAccess
     private var storedSelections: [String: StoredSelection] = [:]
     private var selectionSaveTask: Task<Void, Never>?
     private var detailRequestedIDs: Set<UUID> = []
@@ -45,7 +45,7 @@ final class AppModel {
         self.scanner = scanner
         self.selectionStore = selectionStore
         self.rejectedPhotoManager = rejectedPhotoManager
-        self.userDefaults = userDefaults
+        self.folderAccess = FolderAccess(defaults: userDefaults)
     }
 
     var sourceFolder: URL? {
@@ -180,10 +180,30 @@ final class AppModel {
 
     func loadDroppedURLs(_ urls: [URL]) {
         guard !isLoading else { return }
-        guard let folder = urls.first.map(folderURL(for:)) else { return }
-        Task {
-            await loadFolder(folder)
+        guard let dropped = urls.first else { return }
+
+        var isDirectory: ObjCBool = false
+        let exists = FileManager.default.fileExists(
+            atPath: dropped.path,
+            isDirectory: &isDirectory
+        )
+        if exists, isDirectory.boolValue {
+            Task { await loadFolder(dropped) }
+            return
         }
+
+        // The sandbox grants access to exactly what was dragged. A dropped
+        // photo does not bring its folder along, so the enclosing folder can
+        // be unreadable even though its path is right there in the URL —
+        // check before scanning, or the folder reads as empty and the error
+        // blames the photos.
+        let folder = dropped.deletingLastPathComponent()
+        guard (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) != nil else {
+            loadError = "Drag in the folder itself. Dropping a photo lets "
+                + "Pickroom see only that one file, not the rest of the folder."
+            return
+        }
+        Task { await loadFolder(folder) }
     }
 
     func loadFolder(_ folder: URL) async {
@@ -211,7 +231,7 @@ final class AppModel {
         workspaceMode = .cull
         isLoading = false
 
-        userDefaults.set(folder.path, forKey: "lastPhotoFolder")
+        folderAccess.remember(folder)
 
         if scanned.isEmpty {
             loadError = "No supported RAW or image files were found in “\(folder.lastPathComponent)”."
@@ -219,14 +239,8 @@ final class AppModel {
     }
 
     func restoreLastFolderIfAvailable() async {
-        guard
-            assets.isEmpty,
-            let path = userDefaults.string(forKey: "lastPhotoFolder"),
-            FileManager.default.fileExists(atPath: path)
-        else {
-            return
-        }
-        await loadFolder(URL(fileURLWithPath: path, isDirectory: true))
+        guard assets.isEmpty, let folder = folderAccess.restoreRemembered() else { return }
+        await loadFolder(folder)
     }
 
     // MARK: - Photos library
@@ -746,15 +760,6 @@ final class AppModel {
             + ".\n\n"
             + details.joined(separator: "\n")
             + suffix
-    }
-
-    private func folderURL(for url: URL) -> URL {
-        var isDirectory: ObjCBool = false
-        if FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory),
-           isDirectory.boolValue {
-            return url
-        }
-        return url.deletingLastPathComponent()
     }
 }
 
