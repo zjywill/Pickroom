@@ -92,7 +92,8 @@ scripts/release.sh 0.3.0
 ```
 
 Apple's notary queue can sit on a submission for hours. When it does, ship
-with `ALLOW_UNNOTARISED=1` and backfill the tickets afterwards by re-running
+with `NOTARIZE=0 ALLOW_UNNOTARISED=1` and backfill the tickets afterwards by
+re-running
 `scripts/notarise-release.sh 0.3.0` until it stops telling you to come back;
 it replaces the published DMG, repoints the cask, and strips the Gatekeeper
 workaround from the release notes.

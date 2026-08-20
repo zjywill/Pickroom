@@ -87,7 +87,7 @@ picks up a waiting ticket in about a second.
 When a release cannot wait, ship it and backfill:
 
 ```bash
-ALLOW_UNNOTARISED=1 scripts/release.sh X.Y.Z    # notes carry the workaround
+NOTARIZE=0 ALLOW_UNNOTARISED=1 scripts/release.sh X.Y.Z   # notes carry the workaround
 scripts/notarise-release.sh X.Y.Z               # run repeatedly, ~3 times
 ```
 
