@@ -1,15 +1,28 @@
 {
   "fill" : {
-    "automatic-gradient" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
+    "linear-gradient" : [
+      "gray:1.00000,1.00000",
+      "display-p3:0.46205,0.98337,0.29858,1.00000"
+    ],
+    "orientation" : {
+      "start" : {
+        "x" : 0.5,
+        "y" : 0
+      },
+      "stop" : {
+        "x" : 0.5,
+        "y" : 0.7
+      }
+    }
   },
   "groups" : [
     {
       "layers" : [
         {
-          "image-name" : "photo-frame-face-app-icon.png",
-          "name" : "photo-frame-face-app-icon",
+          "image-name" : "photo-picker-icon.png",
+          "name" : "photo-picker-icon",
           "position" : {
-            "scale" : 0.9,
+            "scale" : 0.83,
             "translation-in-points" : [
               0,
               0
